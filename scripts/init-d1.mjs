@@ -19,6 +19,14 @@ function extractDdl() {
   return matches.map((s) => s.replace(/\\`/g, "`")).filter((s) => s.trim().toUpperCase().startsWith("CREATE"));
 }
 
+/** Column migrations: [table, column, DDL], applied only when missing. */
+function extractMigrations() {
+  const src = readFileSync(path.join(__dirname, "../src/lib/db/ddl.ts"), "utf8");
+  const block = src.split("COLUMN_MIGRATIONS")[1] ?? "";
+  const rows = [...block.matchAll(/\["([a-z_]+)", "([a-z_]+)", "([^"]+)"\]/g)];
+  return rows.map((m) => ({ table: m[1], column: m[2], sql: m[3] }));
+}
+
 async function main() {
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
   const apiToken = process.env.CLOUDFLARE_API_TOKEN;
@@ -55,6 +63,39 @@ async function main() {
       process.exit(1);
     }
   }
+  // Column migrations, guarded by the actual table shape so re-running
+  // this script is always safe.
+  const migrations = extractMigrations();
+  for (const m of migrations) {
+    const info = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ sql: `PRAGMA table_info(${m.table})`, params: [] }),
+    }).then((r) => r.json());
+    const cols = (info?.result?.[0]?.results ?? []).map((c) => c.name);
+    if (!cols.includes(m.column)) {
+      console.log(`+ cards.${m.column} is missing, adding it`);
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ sql: m.sql, params: [] }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        console.error(`HTTP ${res.status}: ${text.slice(0, 300)}`);
+        process.exit(1);
+      }
+    } else {
+      console.log(`= cards.${m.column} already present`);
+    }
+  }
+
   console.log("Done. The remote D1 schema is ready.");
 }
 

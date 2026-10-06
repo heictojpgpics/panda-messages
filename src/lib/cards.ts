@@ -1,15 +1,17 @@
 import { getDb } from "./db";
-import { cards, cardEvents, reactions, replies } from "./db/schema";
+import { cards, cardEvents, reactions, replies, users } from "./db/schema";
 import { and, asc, desc, eq, gt, inArray, lte, ne, sql } from "drizzle-orm";
 import { newId, newSlug, newToken, sha256Hex, timingSafeEqualStr } from "./ids";
 import { getTheme, FREE_THEMES } from "@/data/themes";
 import type { SessionUser } from "./auth";
+import { siteUrl } from "./config";
 
 export interface CardDraft {
   senderName: string;
   recipientName: string;
   recipientEmail?: string | null;
   occasion: string;
+  customOccasion?: string | null;
   message: string;
   signoff: string;
   theme: string;
@@ -27,6 +29,70 @@ export async function logEvent(cardId: string, type: string, meta?: unknown): Pr
     meta: meta === undefined ? null : JSON.stringify(meta),
     createdAt: new Date().toISOString(),
   });
+}
+
+/**
+ * The moment the sender is not at their dashboard, the inbox takes over
+ * the watch. Sends the card's owner a short email for the big moments.
+ */
+async function notifyOwner(
+  card: { id: string; userId: string | null; recipientName: string },
+  kind: "opened" | "replied" | "delivery_failed",
+  detail?: { replyAuthor?: string; replyText?: string; reason?: string }
+): Promise<void> {
+  try {
+    if (!card.userId) return;
+    const db = await getDb();
+    const rows = await db
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.id, card.userId))
+      .limit(1);
+    const email = rows[0]?.email;
+    if (!email) return;
+
+    const { sendEmail, renderPandaEmail, escapeHtml } = await import("./email");
+    const cardUrl = `${siteUrl()}/dashboard?watch=`;
+    const dash = `${siteUrl()}/dashboard`;
+
+    let subject = "";
+    let title = "";
+    let body = "";
+    if (kind === "opened") {
+      subject = `🐼 ${card.recipientName} just opened your card`;
+      title = "They opened it";
+      body = `<p style="margin:0 0 14px;">The seal cracked a moment ago. ${escapeHtml(card.recipientName)} is reading your words right about now.</p>`;
+    } else if (kind === "replied") {
+      subject = `💌 ${detail?.replyAuthor ?? "They"} wrote back to your card`;
+      title = "They wrote back";
+      const quote = detail?.replyText
+        ? `<blockquote style="margin:14px 0;padding:12px 16px;background:#F4F8EF;border-radius:12px;font-style:italic;">${escapeHtml(String(detail.replyText).slice(0, 280))}</blockquote>`
+        : "";
+      body = `<p style="margin:0 0 14px;">${escapeHtml(detail?.replyAuthor ?? card.recipientName)} sent a note back${detail?.replyAuthor ? " to your card" : ""}.</p>${quote}`;
+    } else {
+      subject = "⚠️ A card could not be delivered";
+      title = "A delivery hit a snag";
+      body = `<p style="margin:0 0 14px;">The card for ${escapeHtml(card.recipientName)} could not be delivered${detail?.reason ? `: ${escapeHtml(String(detail.reason).slice(0, 120))}` : "."} You can check the address and try again from your dashboard.</p>`;
+    }
+
+    const html = renderPandaEmail({
+      title,
+      preheader: subject,
+      bodyHtml: `${body}<a href="${dash}" style="display:inline-block;background:#157A55;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:999px;font-weight:600;font-size:15px;">Open my dashboard</a>`,
+      footerNote: "You only get these for your own cards.",
+    });
+    await sendEmail({
+      to: email,
+      subject,
+      html,
+      text: subject,
+      cardId: card.id,
+      kind: "notify",
+    });
+    void cardUrl;
+  } catch {
+    // Notifications are best-effort; the dashboard is the source of truth.
+  }
 }
 
 /** Hash an edit token the way it is stored. */
@@ -51,6 +117,7 @@ export async function createCard(draft: CardDraft, userId: string | null) {
     recipientName: draft.recipientName.trim(),
     recipientEmail: draft.recipientEmail?.trim() || null,
     occasion: draft.occasion,
+    customOccasion: draft.customOccasion?.trim()?.slice(0, 60) || null,
     message: draft.message.trim(),
     signoff: draft.signoff.trim() || "with love, Panda 💚",
     theme: theme.id,
@@ -105,6 +172,7 @@ export async function updateCard(id: string, patch: Partial<CardDraft> & { recip
   if (patch.recipientName !== undefined) values.recipientName = patch.recipientName.trim();
   if (patch.recipientEmail !== undefined) values.recipientEmail = patch.recipientEmail?.trim() || null;
   if (patch.occasion !== undefined) values.occasion = patch.occasion;
+  if (patch.customOccasion !== undefined) values.customOccasion = patch.customOccasion?.trim()?.slice(0, 60) || null;
   if (patch.message !== undefined) values.message = patch.message.trim();
   if (patch.signoff !== undefined) values.signoff = patch.signoff.trim();
   if (patch.theme !== undefined) values.theme = getTheme(patch.theme).id;
@@ -265,6 +333,14 @@ export async function recordView(id: string): Promise<boolean> {
   if (rows[0]?.openedAt === now) {
     // First open: fire the event the sender has been waiting for.
     await logEvent(id, "opened", {});
+    const fresh = await db
+      .select({ userId: cards.userId, recipientName: cards.recipientName })
+      .from(cards)
+      .where(eq(cards.id, id))
+      .limit(1);
+    if (fresh[0]) {
+      await notifyOwner({ id, userId: fresh[0].userId, recipientName: fresh[0].recipientName }, "opened");
+    }
     return true;
   }
   return false;
@@ -303,6 +379,18 @@ export async function addReply(cardId: string, authorName: string, message: stri
     createdAt: now,
   });
   await logEvent(cardId, "replied", { authorName: authorName.trim() });
+  const fresh = await db
+    .select({ userId: cards.userId, recipientName: cards.recipientName })
+    .from(cards)
+    .where(eq(cards.id, cardId))
+    .limit(1);
+  if (fresh[0]) {
+    await notifyOwner(
+      { id: cardId, userId: fresh[0].userId, recipientName: fresh[0].recipientName },
+      "replied",
+      { replyAuthor: authorName.trim(), replyText: message.trim() }
+    );
+  }
 }
 
 export async function stats() {

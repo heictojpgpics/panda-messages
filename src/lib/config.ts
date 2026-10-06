@@ -23,3 +23,8 @@ export function emailMode(): "resend" | "mock" {
 export function storageMode(): "d1" | "local" {
   return process.env.D1_DATABASE_ID ? "d1" : "local";
 }
+
+/** The public base URL, one source for links in emails and redirects. */
+export function siteUrl(): string {
+  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+}

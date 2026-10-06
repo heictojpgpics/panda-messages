@@ -136,6 +136,7 @@ export function Wizard() {
         setDraft((d) => ({
           ...d,
           occasion: OCCASIONS.some((o) => o.id === c.occasion) ? c.occasion : "custom",
+          customOccasion: c.customOccasion ?? "",
           recipientName: c.recipientName ?? "",
           senderName: c.senderName ?? "",
           message: c.message ?? "",
@@ -239,6 +240,7 @@ export function Wizard() {
         senderName: draft.senderName,
         recipientName: draft.recipientName,
         occasion: draft.occasion === "custom" ? "just-because" : draft.occasion,
+        customOccasion: draft.occasion === "custom" ? draft.customOccasion ?? "" : null,
         message: draft.message,
         signoff,
         theme: draft.theme,

@@ -80,8 +80,11 @@ export default async function CardPage({ params }: Props) {
     );
   }
 
-  const label =
-    card.occasion === "custom"
+  const label = card.customOccasion?.trim()
+    ? card.plan === "paid"
+      ? card.customOccasion.trim()
+      : "Just because"
+    : card.occasion === "custom"
       ? "Just because"
       : getOccasion(card.occasion)?.label ?? occasionLabel(card.occasion);
 

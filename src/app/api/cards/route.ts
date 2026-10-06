@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
     const songProvider = body.songId ? String(body.songProvider ?? "youtube") : null;
     const photos = Array.isArray(body.photos) ? body.photos.filter((p: unknown) => typeof p === "string") : null;
     const replyTo = body.replyTo ? String(body.replyTo).trim().slice(0, 20) : null;
+    const customOccasion = body.customOccasion ? String(body.customOccasion).trim().slice(0, 60) : null;
 
     if (!senderName || senderName.length > 40) {
       return NextResponse.json({ error: "Your name is needed (max 40 characters)." }, { status: 400 });
@@ -80,6 +81,7 @@ export async function POST(req: NextRequest) {
         recipientName,
         recipientEmail: null,
         occasion: OCCASIONS.some((o) => o.id === occasion) ? occasion : "just-because",
+        customOccasion,
         message,
         signoff,
         theme: getTheme(theme).id,

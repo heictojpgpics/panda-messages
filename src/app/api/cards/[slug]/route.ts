@@ -53,6 +53,7 @@ export async function PATCH(req: NextRequest) {
       patch.recipientName = name;
     }
     if (body.signoff !== undefined) patch.signoff = String(body.signoff).trim().slice(0, 60);
+    if (body.customOccasion !== undefined) patch.customOccasion = String(body.customOccasion).trim().slice(0, 60) || null;
     if (body.theme !== undefined && typeof body.theme === "string") patch.theme = body.theme;
     if (body.songId !== undefined) {
       patch.songId = body.songId ? String(body.songId).slice(0, 40) : null;
@@ -116,6 +117,7 @@ export async function GET(req: NextRequest) {
     senderName: card.senderName,
     recipientName: card.recipientName,
     occasion: card.occasion,
+    customOccasion: card.customOccasion,
     message: card.message,
     signoff: card.signoff,
     theme: card.theme,

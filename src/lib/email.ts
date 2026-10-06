@@ -15,7 +15,7 @@ export interface OutgoingEmail {
   html: string;
   text: string;
   cardId?: string | null;
-  kind?: "card" | "receipt" | "claim";
+  kind?: "card" | "receipt" | "claim" | "notify";
 }
 
 export interface SendResult {
@@ -188,7 +188,7 @@ export function escapeHtml(s: string): string {
     .replaceAll("'", "&#39;");
 }
 
-function renderPandaEmail(opts: { title: string; preheader: string; bodyHtml: string; footerNote: string }): string {
+export function renderPandaEmail(opts: { title: string; preheader: string; bodyHtml: string; footerNote: string }): string {
   return `<!doctype html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>

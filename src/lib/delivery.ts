@@ -4,6 +4,9 @@ import { and, eq, lte, ne, sql } from "drizzle-orm";
 import { logEvent } from "./cards";
 import { cardDeliveryEmail, sendEmail } from "./email";
 import { getOccasion } from "@/data/occasions";
+import { siteUrl } from "./config";
+
+export { siteUrl };
 
 /**
  * Delivery engine. Finds cards whose moment has come and sends them.
@@ -23,10 +26,6 @@ import { getOccasion } from "@/data/occasions";
 
 let lastTick = 0;
 const TICK_DEBOUNCE_MS = 15_000;
-
-export function siteUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-}
 
 /** Cheap opportunistic run, debounced, safe to call on every request. */
 export async function opportunisticTick(): Promise<void> {
