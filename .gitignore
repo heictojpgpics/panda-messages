@@ -77,3 +77,4 @@ mini-services/
 tests/
 Caddyfile
 agent-ctx/
+prisma/
