@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Envelope } from "@/components/brand/Envelope";
 import { PandaMoodFace } from "@/components/brand/PandaMood";
@@ -23,6 +23,19 @@ export interface CardSceneData {
 }
 
 type Phase = "arrived" | "opening" | "card";
+
+/** Envelope size that fits the viewport, measured after mount so SSR and
+ * hydration agree on the first frame. */
+function useEnvelopeWidth(): number {
+  const [width, setWidth] = useState(340);
+  useEffect(() => {
+    const update = () => setWidth(Math.min(340, Math.max(220, window.innerWidth - 80)));
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+  return width;
+}
 
 /** Which texture drifts down during the card view, per theme. */
 const DRIFT: Record<Theme["colors"]["texture"], { emoji: string; opacity: number }[]> = {
@@ -53,6 +66,7 @@ export function CardScene({
   const theme = getTheme(data.theme);
   const [phase, setPhase] = useState<Phase>("arrived");
   const reduce = useReducedMotion();
+  const envelopeWidth = useEnvelopeWidth();
 
   const open = useCallback(() => {
     if (phase !== "arrived") return;
@@ -126,7 +140,7 @@ export function CardScene({
               animate={reduce ? {} : { y: [0, -8, 0], rotate: [-1, 1, -1] }}
               transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
             >
-              <Envelope theme={theme} open={false} width={Math.min(340, typeof window !== "undefined" ? window.innerWidth - 80 : 340)} />
+              <Envelope theme={theme} open={false} width={envelopeWidth} />
             </motion.div>
 
             <div className="text-center">
@@ -161,7 +175,7 @@ export function CardScene({
             exit={{ opacity: 0 }}
             className="relative z-10"
           >
-            <Envelope theme={theme} open={true} width={Math.min(340, typeof window !== "undefined" ? window.innerWidth - 80 : 340)} />
+            <Envelope theme={theme} open={true} width={envelopeWidth} />
           </motion.div>
         )}
 
@@ -268,7 +282,6 @@ function TheCard({ data, theme, mode }: { data: CardSceneData; theme: Theme; mod
                 whileHover={{ scale: 1.06, rotate: 0, zIndex: 5 }}
                 className="shrink-0"
               >
-                { }
                 <img
                   src={p}
                   alt={`A photo of you two, number ${i + 1}`}
@@ -348,6 +361,7 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
   const [replyName, setReplyName] = useState("");
   const [replyText, setReplyText] = useState("");
   const [replySent, setReplySent] = useState(false);
+  const [replyError, setReplyError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const burstId = useRef(0);
 
@@ -366,8 +380,9 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
   };
 
   const sendReply = async () => {
-    if (!replyName.trim() || !replyText.trim()) return;
+    if (!replyName.trim() || !replyText.trim() || sending) return;
     setSending(true);
+    setReplyError(null);
     try {
       const res = await fetch(`/api/cards/${slug}/replies`, {
         method: "POST",
@@ -376,7 +391,12 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
       });
       if (res.ok) {
         setReplySent(true);
+      } else {
+        const body = await res.json().catch(() => ({}));
+        setReplyError(body.error ?? "The reply did not go through. Try once more?");
       }
+    } catch {
+      setReplyError("The connection hiccuped. Try once more?");
     } finally {
       setSending(false);
     }
@@ -441,21 +461,32 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
           {!replySent ? (
             replyOpen ? (
               <div className="space-y-3">
-                {!replyOpen && null}
                 <input
                   value={replyName}
                   onChange={(e) => setReplyName(e.target.value)}
                   placeholder="Your name"
+                  aria-label="Your name"
                   maxLength={40}
                   className="w-full rounded-full border border-ink/12 bg-paper px-4 py-2.5 text-[13.5px] focus:outline-none focus:ring-2 focus:ring-jade/30"
                 />
-                <textarea
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value.slice(0, 400))}
-                  placeholder={`Say something back to ${data.senderName}...`}
-                  rows={3}
-                  className="w-full rounded-2xl border border-ink/12 bg-paper px-4 py-3 text-[13.5px] resize-none focus:outline-none focus:ring-2 focus:ring-jade/30"
-                />
+                <div className="relative">
+                  <textarea
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value.slice(0, 400))}
+                    placeholder={`Say something back to ${data.senderName}...`}
+                    aria-label={`Say something back to ${data.senderName}`}
+                    rows={3}
+                    className="w-full rounded-2xl border border-ink/12 bg-paper px-4 py-3 text-[13.5px] resize-none focus:outline-none focus:ring-2 focus:ring-jade/30"
+                  />
+                  {replyText.length > 300 && (
+                    <span className="absolute bottom-2 right-3 text-[10.5px] tabular-nums text-ink/35">
+                      {400 - replyText.length} left
+                    </span>
+                  )}
+                </div>
+                {replyError && (
+                  <p className="text-[12.5px] text-blush" role="alert">{replyError}</p>
+                )}
                 <div className="flex justify-end gap-2">
                   <button
                     onClick={() => setReplyOpen(false)}

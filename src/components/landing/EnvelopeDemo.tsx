@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import Link from "next/link";
 import { motion, useInView } from "framer-motion";
 import { getTheme } from "@/data/themes";
 import { Envelope } from "@/components/brand/Envelope";
@@ -11,8 +12,6 @@ import { Play } from "lucide-react";
  * scrolls to it. The demo of the exact moment we sell.
  */
 export function EnvelopeDemo() {
-  const ref = useRef<HTMLDivElement>(null);
-
   return (
     <section className="relative overflow-hidden bg-mist/60" id="what-they-see">
       <div className="absolute inset-0 bamboo-bg opacity-60" aria-hidden />
@@ -61,12 +60,12 @@ export function EnvelopeDemo() {
                 </li>
               ))}
             </ul>
-            <a
+            <Link
               href="/create"
               className="sheen mt-7 inline-flex items-center gap-2 rounded-full bg-jade text-white font-semibold px-6 py-3.5 shadow-[0_14px_30px_-10px_rgba(21,122,85,0.6)] hover:bg-jade-deep transition-all active:scale-[0.99]"
             >
               Make one for someone
-            </a>
+            </Link>
           </div>
         </div>
       </div>

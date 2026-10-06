@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { createCard } from "@/lib/cards";
+import { createCard, getCardBySlug } from "@/lib/cards";
 import { clientIp, rateLimit } from "@/lib/ratelimit";
 import { OCCASIONS } from "@/data/occasions";
 import { getTheme } from "@/data/themes";
@@ -67,6 +67,13 @@ export async function POST(req: NextRequest) {
     }
 
     const user = await getCurrentUser();
+    // A reply card links back to the card it answers, by slug from the
+    // query, resolved to the id the schema keeps.
+    let replyToCardId: string | null = null;
+    if (replyTo) {
+      const parent = await getCardBySlug(replyTo);
+      replyToCardId = parent?.id ?? null;
+    }
     const { card, editToken } = await createCard(
       {
         senderName,
@@ -79,7 +86,7 @@ export async function POST(req: NextRequest) {
         songId,
         songProvider,
         photos,
-        replyToCardId: replyTo,
+        replyToCardId,
       },
       user?.id ?? null
     );

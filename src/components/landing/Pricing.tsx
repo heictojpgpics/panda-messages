@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Check, Sparkles } from "lucide-react";
 import { PandaMoodFace } from "@/components/brand/PandaMood";
+import { THEMES } from "@/data/themes";
 
 const FREE_FEATURES = [
   "A personalized card, made in a minute",
@@ -14,7 +15,7 @@ const FREE_FEATURES = [
 
 const PAID_FEATURES = [
   "No pandamessages.com mark on their card",
-  "All 11 themes for the page they open",
+  "All {n} themes for the page they open".replace("{n}", String(THEMES.length)),
   "Their song plays as they read it",
   "Up to 5 photos tucked inside",
   "Panda delivers it to their inbox, on the morning you pick",

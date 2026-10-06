@@ -22,7 +22,6 @@ export function EnvelopeSeal({ theme, size = 34 }: { theme: Theme; size?: number
       }}
       aria-hidden
     >
-      { }
       <img src="/panda/d-center.png" alt="" width={size * 0.62} height={size * 0.62} className="object-contain" draggable={false} />
     </span>
   );
@@ -40,7 +39,11 @@ interface EnvelopeProps {
 export function Envelope({ theme, open, className, width = 320, children }: EnvelopeProps) {
   const height = width * 0.62;
   return (
-    <div className={cn("relative select-none", className)} style={{ width, height }} aria-hidden>
+    <div
+      className={cn("relative select-none", className)}
+      style={{ width, height, perspective: width * 2 }}
+      aria-hidden
+    >
       {/* Envelope back */}
       <div
         className="absolute inset-0 rounded-xl shadow-[0_18px_50px_-18px_rgba(22,36,28,0.45)]"
@@ -97,7 +100,7 @@ export function Envelope({ theme, open, className, width = 320, children }: Enve
       {/* The flap */}
       <motion.div
         className="absolute inset-x-0 top-0 origin-top z-20"
-        style={{ height: height * 0.62 }}
+        style={{ height: height * 0.62, transformStyle: "preserve-3d" }}
         animate={open ? { rotateX: 178 } : { rotateX: 0 }}
         transition={{ type: "spring", stiffness: 90, damping: 15 }}
       >

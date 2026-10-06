@@ -39,7 +39,8 @@ export function Testimonials() {
             People love their Panda cards 😍
           </h2>
           <p className="mt-3 text-ink-soft text-[14.5px]">
-            From the early flock. Slightly edited for length, unedited for feelings.
+            The feelings people describe after sending one. We paraphrase, the
+            happy-crying stays.
           </p>
         </div>
 

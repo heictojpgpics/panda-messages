@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { OCCASIONS } from "@/data/occasions";
+import { THEMES } from "@/data/themes";
+import { LIBRARY } from "@/data/library";
 
 interface Counts {
   cards: number;
@@ -11,33 +14,56 @@ interface Counts {
   replies: number;
 }
 
-function formatN(n: number): string {
-  if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}K+`;
-  return `${n}+`;
+/**
+ * The proof strip. Product facts are always true (computed from the real
+ * catalog), and live usage counts join in once they are meaningful rather
+ * than showing a sad "1+" on day one.
+ */
+const ALWAYS_TRUE = [
+  { key: "occasions", label: "occasions to send for", emoji: "🐾", color: "text-jade" },
+  { key: "themes", label: "themes for the page they open", emoji: "🎨", color: "text-gold" },
+  { key: "messages", label: "message ideas, free to borrow", emoji: "✍️", color: "text-blush" },
+  { key: "cards", label: "cards sent so far", emoji: "💌", color: "text-ink-soft" },
+] as const;
+
+const USAGE_THRESHOLD = 25;
+
+function libraryMessageCount(): number {
+  return LIBRARY.reduce((n, page) => n + page.messages.length, 0);
 }
 
-const ITEMS: { key: keyof Counts; label: string; emoji: string; color: string }[] = [
-  { key: "cards", label: "cards made with love", emoji: "🐾", color: "text-jade" },
-  { key: "smiles", label: "smiles delivered", emoji: "🙂", color: "text-gold" },
-  { key: "reactions", label: "hearts sent back", emoji: "💚", color: "text-blush" },
-  { key: "replies", label: "replies written", emoji: "💬", color: "text-ink-soft" },
-];
-
 export function StatsBar() {
-  const [counts, setCounts] = useState<Counts | null>(null);
+  const [live, setLive] = useState<Counts | null>(null);
 
   useEffect(() => {
     fetch("/api/stats")
       .then((r) => r.json())
-      .then(setCounts)
+      .then(setLive)
       .catch(() => {});
   }, []);
+
+  const usageReady = (live?.cards ?? 0) >= USAGE_THRESHOLD;
+  const items = ALWAYS_TRUE.map((item) => {
+    switch (item.key) {
+      case "occasions":
+        return { ...item, value: `${OCCASIONS.length}` };
+      case "themes":
+        return { ...item, value: `${THEMES.length}` };
+      case "messages":
+        return { ...item, value: `${libraryMessageCount()}+` };
+      default:
+        return {
+          ...item,
+          value: usageReady && live ? `${live.cards}+` : "yours next",
+        };
+    }
+  });
 
   return (
     <section aria-label="Panda by the numbers" className="relative border-y border-ink/8 bg-paper/70 backdrop-blur-sm">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-4 text-center">
-          {ITEMS.map((item, i) => (
+          {items.map((item, i) => (
             <motion.div
               key={item.key}
               initial={{ opacity: 0, y: 10 }}
@@ -50,14 +76,16 @@ export function StatsBar() {
                 {item.emoji}
               </span>
               <span className={cn("font-display font-semibold text-[clamp(1.4rem,3vw,1.9rem)] tabular-nums", item.color)}>
-                {counts ? formatN(counts[item.key]) : "..."}
+                {item.value}
               </span>
               <span className="text-[12px] text-ink/55">{item.label}</span>
             </motion.div>
           ))}
         </div>
         <p className="mt-5 text-center text-[11.5px] text-ink/40">
-          Live from the bamboo forest. Every number is a real moment somebody caused.
+          {usageReady && live
+            ? "Live from the bamboo forest. Every number is a real moment somebody caused."
+            : "The shelf is stocked and Panda is waiting. Someone has to go first."}
         </p>
       </div>
     </section>

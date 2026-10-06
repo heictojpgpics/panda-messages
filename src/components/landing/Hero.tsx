@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Mascot } from "page-mascot";
 import { OCCASIONS } from "@/data/occasions";
 import { cn } from "@/lib/utils";
@@ -16,7 +16,7 @@ const EXAMPLES = [
       occasion: "thinking-of-you",
       recipientName: "Sarah",
       senderName: "Sam",
-      message: "Panda doesn't need a reason to think of you. You come up all the time, actually. This little card is just proof. You are thought of, and you are loved.",
+      message: "You come up all the time, actually. This card is just proof.",
       signoff: "with love, Panda 💚",
       theme: "bamboo-grove",
       watermark: false,
@@ -28,7 +28,7 @@ const EXAMPLES = [
       occasion: "birthday",
       recipientName: "Mia",
       senderName: "Alex",
-      message: "Happy birthday, Mia. Someone started planning this card long before today, which tells you something about how you are loved. One year more of you existing.",
+      message: "One year more of you existing. Someone planned this card long before today.",
       signoff: "happy birthday again, Panda 💚",
       theme: "birthday-bash",
       watermark: false,
@@ -40,7 +40,7 @@ const EXAMPLES = [
       occasion: "i-miss-you",
       recipientName: "Noor",
       senderName: "Jonas",
-      message: "Panda has a tiny confession. Someone has been missing you a little extra today. Actually, more than a little. Come back soon, okay?",
+      message: "Someone has been missing you a little extra today. Come back soon, okay?",
       signoff: "waiting by the window, Panda 💚",
       theme: "long-distance",
       watermark: false,
@@ -52,7 +52,7 @@ const EXAMPLES = [
       occasion: "love-you",
       recipientName: "Adam",
       senderName: "Kira",
-      message: "Panda was asked to say something, and it turned out to be very simple. You are loved. Not for any occasion, not for anything you did. Just you.",
+      message: "You are loved. Not for any occasion, not for anything you did. Just you.",
       signoff: "with love, Panda 💚",
       theme: "rose-garden",
       watermark: false,
@@ -64,7 +64,7 @@ const EXAMPLES = [
       occasion: "just-because",
       recipientName: "Zoe",
       senderName: "Maya",
-      message: "No special reason for this card. Panda just wanted you to know that someone thinks you're pretty wonderful. Today and most days, actually.",
+      message: "No special reason. Someone thinks you are pretty wonderful, that is all.",
       signoff: "with love, Panda 💚",
       theme: "pressed-flowers",
       watermark: false,
@@ -75,10 +75,12 @@ const EXAMPLES = [
 
 function ExampleCarousel() {
   const [i, setI] = useState(0);
+  const reduce = useReducedMotion();
   useEffect(() => {
+    if (reduce) return;
     const t = setInterval(() => setI((v) => (v + 1) % EXAMPLES.length), 5200);
     return () => clearInterval(t);
-  }, []);
+  }, [reduce]);
   const ex = EXAMPLES[i];
   return (
     <div className="h-full w-full flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-mist/70 to-paper px-4 py-8">
@@ -214,7 +216,7 @@ export function Hero() {
               transition={{ delay: 0.4, duration: 0.55 }}
               className="mt-4 text-ink-soft text-[15px] sm:text-base leading-relaxed max-w-lg mx-auto lg:mx-0"
             >
-              ...You forgot? S&rsquo;okay. 💚 <strong className="text-ink">Panda</strong> will send them a
+              ...You forgot? It happens. 💚 <strong className="text-ink">Panda</strong> will send them a
               little card for you, right on the day. They open it like a gift. There is
               usually a happy cry.
             </motion.p>
@@ -321,6 +323,13 @@ export function Hero() {
                     className="w-full rounded-full border border-ink/12 bg-paper pl-10 pr-4 py-3 text-[13.5px] placeholder:text-ink/40 focus:outline-none focus:ring-2 focus:ring-jade/40 focus:border-jade/50 transition-shadow"
                   />
                 </div>
+                <button
+                  onClick={goCustom}
+                  disabled={!custom.trim()}
+                  className="shrink-0 rounded-full border border-ink/12 bg-paper px-5 py-3 text-[13px] font-semibold text-ink/75 disabled:opacity-40 hover:border-jade/40 hover:text-jade transition-all"
+                >
+                  Use it
+                </button>
               </div>
 
               <div className="mt-3 flex items-center gap-3 text-[12px] text-ink/40">

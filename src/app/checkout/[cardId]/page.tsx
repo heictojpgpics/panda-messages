@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { occasionLabel } from "@/data/occasions";
+import { SITE } from "@/lib/config";
 import { toast } from "sonner";
 import { Lock, CreditCard, Calendar, Sparkles, ArrowRight, Check, Mail } from "lucide-react";
 
@@ -228,7 +229,7 @@ export default function CheckoutPage() {
                       <p className="text-[12.5px] text-ink/55">to {card.recipientEmail}</p>
                     )}
                   </div>
-                  <p className="font-display font-semibold text-ink text-[22px] whitespace-nowrap">$4.99</p>
+                  <p className="font-display font-semibold text-ink text-[22px] whitespace-nowrap">{SITE.cardPriceLabel}</p>
                 </div>
               </div>
 

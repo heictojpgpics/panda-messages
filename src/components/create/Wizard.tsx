@@ -569,7 +569,7 @@ export function Wizard() {
                   </span>
                   <div className="min-w-0">
                     <p className="text-[13px] font-medium text-ink/85 truncate">Their song is attached</p>
-                    <p className="text-[11.5px] text-ink/45">Plays the moment they open it</p>
+                    <p className="text-[11.5px] text-ink/45">One tap away, right under your words</p>
                   </div>
                 </div>
               )}
@@ -810,7 +810,7 @@ function MessageStep({
         <Label htmlFor="song" className="text-[13.5px] font-medium text-ink/80 flex items-center gap-2">
           <Music className="h-4 w-4 text-blush" />
           Add a song
-          <span className="text-[11px] font-normal text-ink/40">it plays when they open your card · with the full card</span>
+          <span className="text-[11px] font-normal text-ink/40">one tap, playing while they read · with the full card</span>
         </Label>
         <div className="flex gap-2">
           <Input
@@ -834,7 +834,7 @@ function MessageStep({
             />
             <div className="flex-1 min-w-0">
               <p className="text-[13px] font-medium text-ink/85">Song attached</p>
-              <p className="text-[11.5px] text-ink/45">Plays once they open the envelope</p>
+              <p className="text-[11.5px] text-ink/45">One tap away, right under your words</p>
             </div>
             <button
               onClick={() => set("songInput", "")}

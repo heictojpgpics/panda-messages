@@ -14,8 +14,18 @@ import { EnvelopeChip } from "@/components/brand/Envelope";
 import { toast } from "sonner";
 import {
   Send, LogOut, Copy, X, Radio, Inbox, Clock, Check, Sparkles,
-  Eye, Heart, MessageCircle, Ban, Plus, ExternalLink,
+  Eye, Heart, MessageCircle, Ban, Plus, ExternalLink, Pencil,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface DashCard {
   id: string;
@@ -66,6 +76,42 @@ const STATUS_STYLE: Record<string, { label: string; cls: string }> = {
   cancelled: { label: "cancelled", cls: "bg-ink/8 text-ink/40" },
 };
 
+/** Human words for every event that can hit the feed. */
+function eventLabel(type: string, meta: Record<string, unknown> | null): string {
+  const kind = typeof meta?.kind === "string" ? meta.kind : "";
+  const author = typeof meta?.authorName === "string" ? meta.authorName : "";
+  switch (type) {
+    case "created":
+      return "The card was made";
+    case "edited":
+      return "You touched it up";
+    case "checkout_started":
+      return "Checkout opened";
+    case "paid":
+      return "Paid, with love";
+    case "scheduled":
+      return "Delivery scheduled";
+    case "delivered":
+      return "Delivered to their inbox";
+    case "opened":
+      return "They opened it. Right now.";
+    case "reacted":
+      return `They sent a ${kind || "reaction"}`;
+    case "replied":
+      return author ? `Reply from ${author}` : "They wrote back";
+    case "cancelled":
+      return "Card taken back";
+    case "refund":
+      return "Refund issued";
+    case "delivery_failed":
+      return "Delivery failed. The address may be wrong.";
+    case "delivery_uncertain":
+      return "Delivery hit a snag. We are watching it.";
+    default:
+      return type.replace(/_/g, " ");
+  }
+}
+
 export default function DashboardPage() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-ivory" />}>
@@ -111,6 +157,15 @@ function Dashboard() {
     const t = setInterval(load, 10000);
     return () => clearInterval(t);
   }, [load]);
+
+  // A finished checkout means the wizard's local draft has done its job.
+  useEffect(() => {
+    if (params.get("paid") === "1") {
+      try {
+        localStorage.removeItem("panda-draft-v2");
+      } catch {}
+    }
+  }, [params]);
 
   if (!loaded) {
     return (
@@ -259,18 +314,24 @@ function CardsTab({ cards, onChange }: { cards: DashCard[]; onChange: () => void
 function CardRow({ card, onChange }: { card: DashCard; onChange: () => void }) {
   const [copied, setCopied] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const theme = getTheme(card.theme);
   const status = STATUS_STYLE[card.status] ?? STATUS_STYLE.draft;
+  const editable = card.status === "scheduled" || card.status === "awaiting_payment" || card.status === "draft";
 
   const copyLink = async () => {
-    await navigator.clipboard.writeText(`${window.location.origin}/c/${card.slug}`);
-    setCopied(true);
-    toast("Link copied. Go make someone's day.");
-    setTimeout(() => setCopied(false), 2200);
+    const url = `${window.location.origin}/c/${card.slug}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      toast("Link copied. Go make someone's day.");
+      setTimeout(() => setCopied(false), 2200);
+    } catch {
+      toast("Copy did not work here. Open their view and copy from the address bar.");
+    }
   };
 
   const cancel = async () => {
-    if (!confirm(`Cancel the card for ${card.recipientName}? They never see it, and the payment is refunded in full.`)) return;
     setCancelling(true);
     try {
       const tokens = JSON.parse(localStorage.getItem("panda-edit-tokens") ?? "{}");
@@ -349,9 +410,18 @@ function CardRow({ card, onChange }: { card: DashCard; onChange: () => void }) {
           {copied ? <Check className="h-3.5 w-3.5 text-jade" /> : <Copy className="h-3.5 w-3.5" />}
           {copied ? "Copied" : "Copy link"}
         </button>
+        {editable && (
+          <Link
+            href={`/create?edit=${card.slug}`}
+            className="inline-flex items-center gap-1.5 rounded-full border border-ink/12 px-4 py-2 text-[12.5px] font-medium text-ink/70 hover:border-jade/40 hover:text-jade transition-all"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            Edit
+          </Link>
+        )}
         {card.status === "scheduled" && card.plan === "paid" && (
           <button
-            onClick={cancel}
+            onClick={() => setConfirmOpen(true)}
             disabled={cancelling}
             className="inline-flex items-center gap-1.5 rounded-full border border-blush/25 text-blush px-4 py-2 text-[12.5px] font-medium hover:bg-blush-soft/50 transition-all ml-auto"
           >
@@ -360,6 +430,31 @@ function CardRow({ card, onChange }: { card: DashCard; onChange: () => void }) {
           </button>
         )}
       </div>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent className="rounded-3xl bg-paper border-ink/10 max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-display text-left">
+              Take back the card for {card.recipientName}?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-left text-[13.5px] leading-relaxed">
+              They never see it, and the {card.plan === "paid" ? "$4.99 returns in full" : "card is simply unmade"}.
+              This cannot be undone, but a new card is always a minute away.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row gap-2 sm:flex-row">
+            <AlertDialogCancel className="mt-0 rounded-full flex-1 border-ink/15">
+              Keep it coming
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={cancel}
+              className="rounded-full flex-1 bg-blush text-white hover:bg-blush/90"
+            >
+              Yes, cancel it
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 }
@@ -451,20 +546,23 @@ function WatchPanel({ card, onDone }: { card: DashCard; onDone: () => void }) {
                 "inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12.5px] font-medium",
                 e.type === "opened" && "bg-blush-soft text-blush",
                 e.type === "delivered" && "bg-gold-soft text-[#8C6D10]",
-                e.type === "reacted" && "bg-jade-soft text-jade",
-                e.type === "replied" && "bg-jade-soft text-jade",
-                !["opened", "delivered", "reacted", "replied"].includes(e.type) && "bg-ink/5 text-ink/60"
+                (e.type === "reacted" || e.type === "replied") && "bg-jade-soft text-jade",
+                (e.type === "delivery_failed" || e.type === "delivery_uncertain") && "bg-blush-soft text-blush",
+                ![
+                  "opened",
+                  "delivered",
+                  "reacted",
+                  "replied",
+                  "delivery_failed",
+                  "delivery_uncertain",
+                ].includes(e.type) && "bg-ink/5 text-ink/60"
               )}
             >
               {e.type === "opened" && <Eye className="h-3.5 w-3.5" />}
               {e.type === "delivered" && <Send className="h-3.5 w-3.5" />}
-              {e.type === "reacted" && <Heart className="h-3.5 w-3.5 fill-current" />}
+              {(e.type === "reacted" || e.type === "replied") && <Heart className="h-3.5 w-3.5 fill-current" />}
               {e.type === "replied" && <MessageCircle className="h-3.5 w-3.5" />}
-              {e.type === "opened" ? "They opened it. Right now." :
-                e.type === "delivered" ? "Delivered to their inbox" :
-                e.type === "reacted" ? `They sent a ${(e.meta as { kind?: string })?.kind ?? "reaction"}` :
-                e.type === "replied" ? `Reply from ${(e.meta as { authorName?: string })?.authorName ?? "them"}` :
-                e.type}
+              {eventLabel(e.type, e.meta)}
             </motion.span>
           ))}
         </AnimatePresence>
@@ -505,13 +603,11 @@ function ActivityTab({ events, cards }: { events: DashEvent[]; cards: DashCard[]
                 <Clock className="h-4 w-4" />}
             </span>
             <p className="text-[13.5px] text-ink/80 flex-1 min-w-0 truncate">
-              {e.type === "opened" ? `${card?.recipientName ?? "They"} opened the card` :
-                e.type === "delivered" ? `Card delivered for ${card?.recipientName ?? "them"}` :
-                e.type === "reacted" ? `${card?.recipientName ?? "They"} reacted ${(e.meta as { kind?: string })?.kind ?? ""}` :
-                e.type === "replied" ? `${(e.meta as { authorName?: string })?.authorName ?? "They"} wrote back` :
-                e.type === "paid" ? "Payment received" :
-                e.type === "scheduled" ? "Card scheduled" :
-                e.type === "created" ? "Card made" : e.type}
+              {e.type === "opened"
+                ? `${card?.recipientName ?? "They"} opened the card`
+                : e.type === "delivered"
+                  ? `Card delivered for ${card?.recipientName ?? "them"}`
+                  : eventLabel(e.type, e.meta)}
             </p>
             <span className="text-[11.5px] text-ink/35 whitespace-nowrap">
               {new Date(e.at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}

@@ -23,17 +23,22 @@ export function LiveWatch() {
   const [phase, setPhase] = useState<Phase>("scheduled");
 
   useEffect(() => {
-    const t1 = setTimeout(() => setPhase("delivered"), 1800);
-    const t2 = setTimeout(() => setPhase("opened"), 3400);
-    const reset = setInterval(() => {
+    const cycle = {
+      t1: 0 as ReturnType<typeof setTimeout> | 0,
+      t2: 0 as ReturnType<typeof setTimeout> | 0,
+    };
+    const run = () => {
       setPhase("scheduled");
-      setTimeout(() => setPhase("delivered"), 1800);
-      setTimeout(() => setPhase("opened"), 3400);
-    }, 8000);
+      cycle.t1 = setTimeout(() => setPhase("delivered"), 1800);
+      cycle.t2 = setTimeout(() => setPhase("opened"), 3400);
+    };
+    const reset = setInterval(run, 8000);
+    cycle.t1 = setTimeout(() => setPhase("delivered"), 1800);
+    cycle.t2 = setTimeout(() => setPhase("opened"), 3400);
     return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
       clearInterval(reset);
+      clearTimeout(cycle.t1);
+      clearTimeout(cycle.t2);
     };
   }, []);
 

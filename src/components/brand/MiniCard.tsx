@@ -70,7 +70,7 @@ export function MiniCard({
       <p
         className={cn(
           "font-display leading-relaxed text-ink/90 text-balance",
-          compact ? "text-[11.5px] line-clamp-3 px-1" : "text-[13.5px] px-2"
+          compact ? "text-[11.5px] px-1" : "text-[13.5px] px-2"
         )}
       >
         {data.message}
