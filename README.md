@@ -120,3 +120,14 @@ Free to make, always. $4.99 once for the full card: no watermark, all themes, so
 scheduled delivery, live watching, replayable forever. Panda Remembers (birthday reminders)
 will be $19 a year. Cancel before send = automatic full refund. No subscriptions, no dark
 patterns.
+
+## What is new since the first release
+
+- The sender gets an email the moment the card is opened and for every
+  reply, so the watch continues even off-site.
+- Scheduled cards are fully editable until the morning they send, from
+  the dashboard's Edit button, with the delivery plan untouched.
+- Custom occasion lines ride on paid cards, alongside the 24 built-in
+  occasions.
+- Every write endpoint is rate limited, payments are idempotent under
+  retries, and all tokens are stored hashed.

@@ -122,3 +122,23 @@ automatically, full amount.
   sender in the dashboard. Drop `outbox` rows older than 90 days if you like;
   nothing links back to them.
 - **Sessions** expire after 30 days. Password claims after 48 hours.
+
+## 5. How the guardrails behave
+
+- **Rate limits** live in the `rate_limits` table (DB-backed, so they hold
+  across isolates). Defaults: 10 sign-in attempts per IP per 10 minutes,
+  5 sign-ups per hour, 20 cards per hour, 10 checkouts per hour, 60
+  reactions per 10 minutes, 10 replies per 10 minutes. They are code-level
+  constants in `src/app/api/*` if you ever want to tune them.
+- **Payment idempotency**: a card flips to paid exactly once. Stripe
+  webhook retries, double submits and racing requests all collapse into
+  the first winner. Deliveries claim `scheduled -> sent` atomically before
+  the email goes out, so two overlapping cron runs cannot double-send.
+- **Token storage**: session, password-claim and edit tokens are stored
+  as SHA-256 hashes. A database leak is not a leak of logins.
+- **Owner notifications**: first open, every reply, and delivery failures
+  email the card's owner automatically (mock outbox by default, Resend
+  when configured).
+- **Column migrations**: additive schema changes live in
+  `COLUMN_MIGRATIONS` inside `src/lib/db/ddl.ts`. The local driver and
+  `npm run db:init` both apply them guarded, so re-running is always safe.
