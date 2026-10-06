@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Based on the image provided, the green circular checkmark badge is located **on the top-right corner of the \"Bamboo Grove\" theme tile** (the first tile in the grid).\n\nHere is a precise description of its location:\n*   **Attachment:** It is attached directly to the specific theme card, not floating elsewhere.\n*   **Position:** It sits exactly at the intersection of the top edge and the right edge of the \"Bamboo Grove\" tile's border.\n*   **Appearance:** It is a small, solid green circle containing a white checkmark. It appears to be positioned slightly outside or overlapping the corner of the tile's rounded border.\n\n*(Note: There is also a similar green checkmark visible in the far top-right corner of the entire browser viewport/page, but the one indicating the selected theme is clearly on the Bamboo Grove tile itself.)*",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1791316898,
+  "id": "202610070401355180812ff04e46da",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202610070401355180812ff04e46da",
+  "usage": {
+    "completion_tokens": 178,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1776,
+    "prompt_tokens_details": {
+      "cached_tokens": 3
+    },
+    "total_tokens": 1954
+  }
+}

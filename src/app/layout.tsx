@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/sonner";
 
 const fraunces = Fraunces({
   variable: "--font-fraunces",
@@ -81,7 +81,7 @@ export default function RootLayout({
         className={`${fraunces.variable} ${inter.variable} antialiased bg-background text-foreground font-sans`}
       >
         {children}
-        <Toaster />
+        <Toaster position="bottom-center" richColors={false} closeButton />
       </body>
     </html>
   );
