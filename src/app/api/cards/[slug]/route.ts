@@ -22,8 +22,9 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "This card is not yours to edit." }, { status: 403 });
     }
 
-    // Paid cards can only be edited before delivery.
-    if (card.status !== "draft" && card.status !== "awaiting_payment") {
+    // Editable until it actually leaves: drafts, open checkouts, and
+    // cards sitting in Panda's delivery queue for a chosen morning.
+    if (!["draft", "awaiting_payment", "scheduled"].includes(card.status)) {
       return NextResponse.json(
         { error: "This card already left. Panda cannot change it mid-flight." },
         { status: 409 }
@@ -89,40 +90,4 @@ export async function PATCH(req: NextRequest) {
     console.error("update card failed", err);
     return NextResponse.json({ error: "Could not save the change." }, { status: 500 });
   }
-}
-
-export async function GET(req: NextRequest) {
-  const slug = req.nextUrl.searchParams.get("slug");
-  const id = req.nextUrl.searchParams.get("id");
-  const editToken = req.nextUrl.searchParams.get("editToken");
-  if (!slug && !id) return NextResponse.json({ error: "Which card?" }, { status: 400 });
-
-  const card = slug ? await getCardBySlug(slug) : await getCardById(id!);
-  if (!card) return NextResponse.json({ error: "Card not found." }, { status: 404 });
-
-  // Maker view: only with the right credentials.
-  const user = await getCurrentUser();
-  const owns = await cardOwnedBy(card, { user, editToken });
-  if (!owns) {
-    return NextResponse.json({ error: "This card is not yours." }, { status: 403 });
-  }
-
-  return NextResponse.json({
-    id: card.id,
-    slug: card.slug,
-    status: card.status,
-    plan: card.plan,
-    recipientEmail: card.recipientEmail,
-    deliverAt: card.deliverAt,
-    senderName: card.senderName,
-    recipientName: card.recipientName,
-    occasion: card.occasion,
-    customOccasion: card.customOccasion,
-    message: card.message,
-    signoff: card.signoff,
-    theme: card.theme,
-    songId: card.songId,
-    songInput: card.songId ? `https://youtu.be/${card.songId}` : "",
-    photos: card.photos ? JSON.parse(card.photos) : [],
-  });
 }

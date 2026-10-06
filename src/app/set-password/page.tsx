@@ -76,6 +76,7 @@ function SetPasswordInner() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="At least 8 characters"
+                maxLength={200}
                 className="rounded-full h-11 pl-11 bg-paper"
                 autoFocus
               />
@@ -90,6 +91,7 @@ function SetPasswordInner() {
                 type="password"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
+                maxLength={200}
                 placeholder="Same one again"
                 className="rounded-full h-11 pl-11 bg-paper"
                 onKeyDown={(e) => e.key === "Enter" && submit()}

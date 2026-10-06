@@ -116,8 +116,11 @@ export function Wizard() {
   };
 
   // Loading an existing card into the wizard (edit mode from the dashboard).
+  // Keyed on editSlug alone so it runs exactly once per card: a self-
+  // referencing dependency would refetch forever and wipe the user's edits.
   useEffect(() => {
-    if (!editingCard) return;
+    if (!editSlug) return;
+    let cancelled = false;
     const tokens = (() => {
       try {
         return JSON.parse(localStorage.getItem(TOKENS_KEY) ?? "{}");
@@ -125,13 +128,14 @@ export function Wizard() {
         return {};
       }
     })();
-    const editToken = tokens[editingCard.slug];
-    fetch(`/api/cards?slug=${editingCard.slug}${editToken ? `&editToken=${encodeURIComponent(editToken)}` : ""}`)
+    const editToken = tokens[editSlug];
+    fetch(`/api/cards?slug=${editSlug}${editToken ? `&editToken=${encodeURIComponent(editToken)}` : ""}`)
       .then(async (r) => {
         if (!r.ok) throw new Error("not yours");
         return r.json();
       })
       .then((c) => {
+        if (cancelled) return;
         setEditingCard({ slug: c.slug, editToken: editToken ?? undefined });
         setDraft((d) => ({
           ...d,
@@ -147,10 +151,14 @@ export function Wizard() {
         }));
       })
       .catch(() => {
+        if (cancelled) return;
         toast("That card could not be loaded. It may not be yours.");
         router.replace("/dashboard");
       });
-  }, [editingCard, router]);
+    return () => {
+      cancelled = true;
+    };
+  }, [editSlug, router]);
 
   const occasion = draft.occasion;
   const seeds = MESSAGE_SEEDS[occasion] ?? MESSAGE_SEEDS["just-because"];
@@ -184,6 +192,7 @@ export function Wizard() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          slug: editingCard.slug,
           editToken: editingCard.editToken,
           senderName: draft.senderName,
           recipientName: draft.recipientName,
@@ -221,6 +230,7 @@ export function Wizard() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          slug: madeCard.slug,
           editToken: madeCard.editToken,
           senderName: draft.senderName,
           recipientName: draft.recipientName,

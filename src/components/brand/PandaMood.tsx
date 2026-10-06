@@ -2,19 +2,19 @@ import { cn } from "@/lib/utils";
 
 const MOODS = {
   center: "/panda/d-center.png",
-  heart: "/panda/r-heart.png",
-  sparkle: "/panda/r-sparkle.png",
-  wink: "/panda/r-wink.png",
-  bashful: "/panda/r-bashful.png",
-  sleepy: "/panda/r-sleepy.png",
-  delighted: "/panda/r-delighted.png",
-  surprised: "/panda/r-surprised.png",
-  dizzy: "/panda/r-dizzy.png",
-  blink: "/panda/r-blink.png",
-  left: "/panda/d-left.png",
-  right: "/panda/d-right.png",
-  up: "/panda/d-up.png",
-  down: "/panda/d-down.png",
+  heart: "/panda/r-heart.webp",
+  sparkle: "/panda/r-sparkle.webp",
+  wink: "/panda/r-wink.webp",
+  bashful: "/panda/r-bashful.webp",
+  sleepy: "/panda/r-sleepy.webp",
+  delighted: "/panda/r-delighted.webp",
+  surprised: "/panda/r-surprised.webp",
+  dizzy: "/panda/r-dizzy.webp",
+  blink: "/panda/r-blink.webp",
+  left: "/panda/d-left.webp",
+  right: "/panda/d-right.webp",
+  up: "/panda/d-up.webp",
+  down: "/panda/d-down.webp",
 } as const;
 
 export type PandaMood = keyof typeof MOODS;
@@ -32,13 +32,14 @@ export function PandaMoodFace({
   alt?: string;
 }) {
   return (
-     
     <img
       src={MOODS[mood]}
       alt={alt}
       width={size}
       height={size}
       draggable={false}
+      loading={"lazy"}
+      decoding={"async"}
       className={cn("object-contain select-none pointer-events-none", className)}
       style={{ width: size, height: "auto" }}
     />

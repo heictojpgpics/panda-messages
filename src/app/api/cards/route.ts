@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { createCard, getCardBySlug } from "@/lib/cards";
+import { createCard, getCardBySlug, getCardById, cardOwnedBy } from "@/lib/cards";
 import { clientIp, rateLimit } from "@/lib/ratelimit";
 import { OCCASIONS } from "@/data/occasions";
 import { getTheme } from "@/data/themes";
@@ -99,3 +99,40 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Panda could not save that card. Try again?" }, { status: 500 });
   }
 }
+
+export async function GET(req: NextRequest) {
+  const slug = req.nextUrl.searchParams.get("slug");
+  const id = req.nextUrl.searchParams.get("id");
+  const editToken = req.nextUrl.searchParams.get("editToken");
+  if (!slug && !id) return NextResponse.json({ error: "Which card?" }, { status: 400 });
+
+  const card = slug ? await getCardBySlug(slug) : await getCardById(id!);
+  if (!card) return NextResponse.json({ error: "Card not found." }, { status: 404 });
+
+  // Maker view: only with the right credentials.
+  const user = await getCurrentUser();
+  const owns = await cardOwnedBy(card, { user, editToken });
+  if (!owns) {
+    return NextResponse.json({ error: "This card is not yours." }, { status: 403 });
+  }
+
+  return NextResponse.json({
+    id: card.id,
+    slug: card.slug,
+    status: card.status,
+    plan: card.plan,
+    recipientEmail: card.recipientEmail,
+    deliverAt: card.deliverAt,
+    senderName: card.senderName,
+    recipientName: card.recipientName,
+    occasion: card.occasion,
+    customOccasion: card.customOccasion,
+    message: card.message,
+    signoff: card.signoff,
+    theme: card.theme,
+    songId: card.songId,
+    songInput: card.songId ? `https://youtu.be/${card.songId}` : "",
+    photos: card.photos ? JSON.parse(card.photos) : [],
+  });
+}
+
