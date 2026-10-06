@@ -1,8 +1,9 @@
 import { getDb } from "./db";
 import { cards, cardEvents, reactions, replies } from "./db/schema";
-import { and, asc, desc, eq, gt, inArray, isNotNull, lte, ne, or, sql } from "drizzle-orm";
-import { newId, newSlug, newToken } from "./ids";
-import { getTheme } from "@/data/themes";
+import { and, asc, desc, eq, gt, inArray, lte, ne, sql } from "drizzle-orm";
+import { newId, newSlug, newToken, sha256Hex, timingSafeEqualStr } from "./ids";
+import { getTheme, FREE_THEMES } from "@/data/themes";
+import type { SessionUser } from "./auth";
 
 export interface CardDraft {
   senderName: string;
@@ -19,7 +20,7 @@ export interface CardDraft {
 }
 
 export async function logEvent(cardId: string, type: string, meta?: unknown): Promise<void> {
-  const db = getDb();
+  const db = await getDb();
   await db.insert(cardEvents).values({
     cardId,
     type,
@@ -28,8 +29,13 @@ export async function logEvent(cardId: string, type: string, meta?: unknown): Pr
   });
 }
 
+/** Hash an edit token the way it is stored. */
+export async function hashEditToken(token: string): Promise<string> {
+  return sha256Hex(`edit:${token}`);
+}
+
 export async function createCard(draft: CardDraft, userId: string | null) {
-  const db = getDb();
+  const db = await getDb();
   const now = new Date().toISOString();
   const id = newId();
   const slug = newSlug(10);
@@ -40,7 +46,7 @@ export async function createCard(draft: CardDraft, userId: string | null) {
     id,
     slug,
     userId,
-    editToken,
+    editToken: await hashEditToken(editToken),
     senderName: draft.senderName.trim(),
     recipientName: draft.recipientName.trim(),
     recipientEmail: draft.recipientEmail?.trim() || null,
@@ -61,23 +67,39 @@ export async function createCard(draft: CardDraft, userId: string | null) {
 
   await logEvent(id, "created", { slug });
   const rows = await db.select().from(cards).where(eq(cards.id, id)).limit(1);
-  return rows[0];
+  return { card: rows[0], editToken };
 }
 
 export async function getCardBySlug(slug: string) {
-  const db = getDb();
+  const db = await getDb();
   const rows = await db.select().from(cards).where(eq(cards.slug, slug)).limit(1);
   return rows[0] ?? null;
 }
 
 export async function getCardById(id: string) {
-  const db = getDb();
+  const db = await getDb();
   const rows = await db.select().from(cards).where(eq(cards.id, id)).limit(1);
   return rows[0] ?? null;
 }
 
+/**
+ * The maker of a card is the signed-in owner or the holder of the edit
+ * token from creation time. Tokens are compared against their stored hash.
+ */
+export async function cardOwnedBy(
+  card: { userId: string | null; editToken: string },
+  opts: { user?: SessionUser | null; editToken?: string | null }
+): Promise<boolean> {
+  if (opts.user && card.userId && card.userId === opts.user.id) return true;
+  if (opts.editToken) {
+    const hashed = await hashEditToken(opts.editToken);
+    return timingSafeEqualStr(hashed, card.editToken);
+  }
+  return false;
+}
+
 export async function updateCard(id: string, patch: Partial<CardDraft> & { recipientEmail?: string | null }) {
-  const db = getDb();
+  const db = await getDb();
   const values: Record<string, unknown> = { updatedAt: new Date().toISOString() };
   if (patch.senderName !== undefined) values.senderName = patch.senderName.trim();
   if (patch.recipientName !== undefined) values.recipientName = patch.recipientName.trim();
@@ -93,7 +115,7 @@ export async function updateCard(id: string, patch: Partial<CardDraft> & { recip
 }
 
 export async function listCardsForUser(userId: string) {
-  const db = getDb();
+  const db = await getDb();
   return db
     .select()
     .from(cards)
@@ -103,7 +125,7 @@ export async function listCardsForUser(userId: string) {
 }
 
 export async function listEventsForCard(cardId: string, afterId = 0, limit = 40) {
-  const db = getDb();
+  const db = await getDb();
   return db
     .select()
     .from(cardEvents)
@@ -113,7 +135,7 @@ export async function listEventsForCard(cardId: string, afterId = 0, limit = 40)
 }
 
 export async function listEventsForUser(userId: string, limit = 30) {
-  const db = getDb();
+  const db = await getDb();
   const userCards = await db
     .select({ id: cards.id })
     .from(cards)
@@ -135,7 +157,7 @@ export async function listEventsForUser(userId: string, limit = 30) {
 }
 
 export async function getReactionsForCard(cardId: string) {
-  const db = getDb();
+  const db = await getDb();
   return db
     .select({ kind: reactions.kind, count: sql<number>`count(*)` })
     .from(reactions)
@@ -144,7 +166,7 @@ export async function getReactionsForCard(cardId: string) {
 }
 
 export async function getRepliesForCard(cardId: string) {
-  const db = getDb();
+  const db = await getDb();
   return db
     .select()
     .from(replies)
@@ -153,48 +175,60 @@ export async function getRepliesForCard(cardId: string) {
     .limit(50);
 }
 
+/**
+ * The payment took hold. Idempotent under retries and races: only the
+ * caller that flips plan free -> paid wins, and only that caller logs the
+ * events and schedules delivery. A second webhook for the same purchase
+ * changes nothing.
+ */
 export async function markPaid(
   id: string,
   opts: { paymentRef: string; provider: string; deliverAt: string | null; recipientEmail: string | null }
-) {
-  const db = getDb();
+): Promise<boolean> {
+  const db = await getDb();
   const now = new Date().toISOString();
-  const status = opts.deliverAt ? "scheduled" : "sent";
-  await db
+  const rows = await db
     .update(cards)
     .set({
       plan: "paid",
       watermark: false,
-      status,
+      status: "scheduled",
       paidAt: now,
       paymentRef: opts.paymentRef,
       checkoutProvider: opts.provider,
       deliverAt: opts.deliverAt,
-      deliveredAt: opts.deliverAt ? null : now,
+      deliveredAt: null,
       recipientEmail: opts.recipientEmail,
       updatedAt: now,
     })
-    .where(eq(cards.id, id));
+    .where(and(eq(cards.id, id), ne(cards.plan, "paid")))
+    .returning({ id: cards.id });
+
+  if (rows.length === 0) return false; // someone else already paid this card
+
   await logEvent(id, "paid", { provider: opts.provider });
-  if (status === "scheduled") {
-    await logEvent(id, "scheduled", { deliverAt: opts.deliverAt });
-  }
-  // The 'delivered' event belongs to the delivery path, so immediate sends
-  // log it exactly once, when deliverCard runs.
+  await logEvent(id, "scheduled", { deliverAt: opts.deliverAt ?? "right away" });
+  return true;
 }
 
 export async function markFreeFinalized(id: string) {
-  const db = getDb();
+  const db = await getDb();
   const now = new Date().toISOString();
+  // The free card stays honest to its own description: watermark, classic
+  // theme. If a paid theme was picked during writing, it gently comes home.
+  const rows = await db.select().from(cards).where(eq(cards.id, id)).limit(1);
+  const card = rows[0];
+  if (!card) return;
+  const keepTheme = FREE_THEMES.includes(card.theme) ? card.theme : "bamboo-grove";
   await db
     .update(cards)
-    .set({ status: "sent", deliveredAt: now, updatedAt: now })
+    .set({ status: "sent", theme: keepTheme, deliveredAt: now, updatedAt: now })
     .where(eq(cards.id, id));
   await logEvent(id, "delivered", { mode: "self-share" });
 }
 
 export async function cancelCard(id: string, refund: boolean) {
-  const db = getDb();
+  const db = await getDb();
   const now = new Date().toISOString();
   await db
     .update(cards)
@@ -204,16 +238,19 @@ export async function cancelCard(id: string, refund: boolean) {
 }
 
 export async function attachCardToUser(id: string, userId: string) {
-  const db = getDb();
+  const db = await getDb();
   await db
     .update(cards)
     .set({ userId, updatedAt: new Date().toISOString() })
     .where(and(eq(cards.id, id), sql`${cards.userId} IS NULL`));
 }
 
-/** Called when a recipient lands on the card. */
+/**
+ * Called when a recipient opens the envelope. One view per open, and the
+ * opened event fires exactly once, on the first one.
+ */
 export async function recordView(id: string): Promise<boolean> {
-  const db = getDb();
+  const db = await getDb();
   const now = new Date().toISOString();
   const rows = await db
     .update(cards)
@@ -233,19 +270,31 @@ export async function recordView(id: string): Promise<boolean> {
   return false;
 }
 
-export async function addReaction(cardId: string, kind: string, visitorId: string) {
-  const db = getDb();
-  await db.insert(reactions).values({
-    cardId,
-    kind,
-    visitorId,
-    createdAt: new Date().toISOString(),
-  });
+/**
+ * One of each reaction kind per visitor. The unique index on
+ * (card, kind, visitor) makes this atomic even under a double-tap, and the
+ * burst stays honest on the sender's live feed instead of turning into a
+ * spam machine.
+ */
+export async function addReaction(cardId: string, kind: string, visitorId: string): Promise<boolean> {
+  const db = await getDb();
+  const rows = await db
+    .insert(reactions)
+    .values({
+      cardId,
+      kind,
+      visitorId,
+      createdAt: new Date().toISOString(),
+    })
+    .onConflictDoNothing()
+    .returning({ id: reactions.id });
+  if (rows.length === 0) return false;
   await logEvent(cardId, "reacted", { kind });
+  return true;
 }
 
 export async function addReply(cardId: string, authorName: string, message: string) {
-  const db = getDb();
+  const db = await getDb();
   const now = new Date().toISOString();
   await db.insert(replies).values({
     cardId,
@@ -257,7 +306,7 @@ export async function addReply(cardId: string, authorName: string, message: stri
 }
 
 export async function stats() {
-  const db = getDb();
+  const db = await getDb();
   const [cardsRow] = await db
     .select({ count: sql<number>`count(*)` })
     .from(cards)

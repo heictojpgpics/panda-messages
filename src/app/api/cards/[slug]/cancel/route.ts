@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { cancelCard, getCardBySlug } from "@/lib/cards";
+import { cancelCard, getCardBySlug, cardOwnedBy, logEvent } from "@/lib/cards";
 import { stripeRefund } from "@/lib/payments";
 
 /** Cancel a scheduled card. Paid cards get an automatic full refund. */
@@ -13,9 +13,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     const user = await getCurrentUser();
     const body = await req.json().catch(() => ({}));
     const editToken = body.editToken ? String(body.editToken) : null;
-    const owns =
-      (user && card.userId && card.userId === user.id) ||
-      (editToken && editToken === card.editToken);
+    const owns = await cardOwnedBy(card, { user, editToken });
     if (!owns) return NextResponse.json({ error: "This card is not yours." }, { status: 403 });
 
     if (card.status === "cancelled") {
@@ -28,12 +26,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
       );
     }
 
+    // Cancel first: the card must stop being deliverable no matter what
+    // the refund call does. A failed refund can be retried; a sent card
+    // cannot be unsent.
+    await cancelCard(card.id, false);
+
     let refunded = false;
     if (card.plan === "paid") {
       refunded = card.checkoutProvider === "stripe" ? await stripeRefund(card.paymentRef ?? "") : true;
+      if (card.checkoutProvider === "mock") refunded = true;
+      if (refunded) {
+        await logEvent(card.id, "refund", {});
+      }
     }
-
-    await cancelCard(card.id, refunded);
     return NextResponse.json({ ok: true, refunded });
   } catch (err) {
     console.error("cancel failed", err);

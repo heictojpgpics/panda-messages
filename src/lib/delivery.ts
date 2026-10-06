@@ -1,16 +1,22 @@
 import { getDb } from "./db";
 import { cards } from "./db/schema";
-import { and, eq, lte, sql } from "drizzle-orm";
+import { and, eq, lte, ne, sql } from "drizzle-orm";
 import { logEvent } from "./cards";
 import { cardDeliveryEmail, sendEmail } from "./email";
 import { getOccasion } from "@/data/occasions";
 
 /**
  * Delivery engine. Finds cards whose moment has come and sends them.
- * Idempotent: a card only ever transitions scheduled -> sent once.
+ *
+ * The scheduled -> sent transition is claimed atomically before the email
+ * goes out, so two overlapping cron runs, a page-load tick and a webhook
+ * landing at the same instant can never double-send. A definitive email
+ * failure (a 4xx from the provider, the address rejected) puts the card
+ * back to scheduled for the next tick and logs the attempt. An ambiguous
+ * failure (network, 5xx) keeps the claim: better one late email than two.
  *
  * Triggers:
- *  - any page load (opportunistic tick, keeps the demo alive)
+ *  - any page load (opportunistic tick, debounced)
  *  - POST/GET /api/cron/deliveries (Cloudflare Cron Trigger or any
  *    external scheduler, protected by CRON_SECRET when set)
  */
@@ -35,7 +41,7 @@ export async function opportunisticTick(): Promise<void> {
 }
 
 export async function processDueDeliveries(): Promise<{ sent: number; failed: number }> {
-  const db = getDb();
+  const db = await getDb();
   const nowIso = new Date().toISOString();
 
   const due = await db
@@ -54,24 +60,34 @@ export async function processDueDeliveries(): Promise<{ sent: number; failed: nu
   let failed = 0;
 
   for (const card of due) {
-    try {
-      await deliverCard(card);
-      sent++;
-    } catch {
-      failed++;
-      await logEvent(card.id, "delivery_failed", {});
-    }
+    const outcome = await deliverCard(card.id);
+    if (outcome === "sent") sent++;
+    else if (outcome === "failed") failed++;
+    // "claimed" means another runner won this one; not a failure.
   }
 
   return { sent, failed };
 }
 
-export async function deliverCard(card: typeof cards.$inferSelect): Promise<void> {
-  const db = getDb();
-  if (card.status !== "scheduled" && card.status !== "awaiting_payment") {
-    // Already handled.
-    return;
-  }
+/**
+ * Deliver one card by id. The claim happens inside, so callers never need
+ * to trust the status they read a moment ago.
+ */
+export async function deliverCard(
+  cardId: string
+): Promise<"sent" | "failed" | "claimed" | "not-ready"> {
+  const db = await getDb();
+
+  // Claim: only a scheduled card can flip to sent, and only one caller
+  // succeeds even under concurrency.
+  const claimed = await db
+    .update(cards)
+    .set({ status: "sent", updatedAt: new Date().toISOString() })
+    .where(and(eq(cards.id, cardId), eq(cards.status, "scheduled")))
+    .returning({ id: cards.id, slug: cards.slug, recipientEmail: cards.recipientEmail, senderName: cards.senderName, recipientName: cards.recipientName, occasion: cards.occasion });
+
+  if (claimed.length === 0) return "claimed";
+  const card = claimed[0];
 
   const email = card.recipientEmail;
   const url = `${siteUrl()}/c/${card.slug}`;
@@ -85,17 +101,36 @@ export async function deliverCard(card: typeof cards.$inferSelect): Promise<void
       occasionLabel,
     });
     mail.to = email;
-    mail.cardId = card.id;
-    const result = await sendEmail(mail);
-    if (result.status === "failed") {
-      throw new Error("email failed");
+    mail.cardId = cardId;
+    try {
+      const result = await sendEmail(mail);
+      if (result.status === "failed") {
+        if (result.definitive) {
+          // The address is wrong or rejected. Release the claim so the
+          // sender sees the failure and can fix the address.
+          await db
+            .update(cards)
+            .set({ status: "scheduled", updatedAt: new Date().toISOString() })
+            .where(and(eq(cards.id, cardId), eq(cards.status, "sent")));
+          await logEvent(cardId, "delivery_failed", { reason: result.error ?? "rejected" });
+          return "failed";
+        }
+        // Ambiguous (network, 5xx): the email may have gone out. Keep the
+        // claim, log it, and let a human or retry sort it out.
+        await logEvent(cardId, "delivery_uncertain", { reason: result.error ?? "unknown" });
+      }
+    } catch (err) {
+      await logEvent(cardId, "delivery_uncertain", {
+        reason: err instanceof Error ? err.message.slice(0, 120) : "unknown",
+      });
     }
   }
 
   const nowIso = new Date().toISOString();
   await db
     .update(cards)
-    .set({ status: "sent", deliveredAt: nowIso, updatedAt: nowIso })
-    .where(eq(cards.id, card.id));
-  await logEvent(card.id, "delivered", {});
+    .set({ deliveredAt: nowIso, updatedAt: nowIso })
+    .where(eq(cards.id, cardId));
+  await logEvent(cardId, "delivered", {});
+  return "sent";
 }

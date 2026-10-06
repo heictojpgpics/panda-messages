@@ -18,11 +18,24 @@ export interface OutgoingEmail {
   kind?: "card" | "receipt" | "claim";
 }
 
+export interface SendResult {
+  status: "sent" | "failed";
+  provider: "resend" | "mock";
+  ref: string | null;
+  error?: string;
+  /**
+   * True when the provider definitively refused the send (bad address,
+   * validation error). False when the outcome is unknown. Delivery uses
+   * this to decide between retry and hold.
+   */
+  definitive?: boolean;
+}
+
 export function emailMode(): "resend" | "mock" {
   return process.env.RESEND_API_KEY ? "resend" : "mock";
 }
 
-async function resendSend(email: OutgoingEmail): Promise<string> {
+async function resendSend(email: OutgoingEmail): Promise<{ id: string }> {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -39,15 +52,18 @@ async function resendSend(email: OutgoingEmail): Promise<string> {
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`Resend ${res.status}: ${body.slice(0, 200)}`);
+    const err = new Error(`Resend ${res.status}: ${body.slice(0, 200)}`);
+    // 4xx: our request was rejected outright. 5xx or unknown: unclear.
+    (err as Error & { definitive?: boolean }).definitive = res.status >= 400 && res.status < 500;
+    throw err;
   }
   const json = (await res.json()) as { id: string };
-  return json.id;
+  return json;
 }
 
 /** Queue + send. In mock mode the outbox row itself is the delivery. */
-export async function sendEmail(email: OutgoingEmail): Promise<{ status: string; provider: string; ref: string | null }> {
-  const db = getDb();
+export async function sendEmail(email: OutgoingEmail): Promise<SendResult> {
+  const db = await getDb();
   const provider = emailMode();
   const now = new Date().toISOString();
 
@@ -68,12 +84,12 @@ export async function sendEmail(email: OutgoingEmail): Promise<{ status: string;
 
   try {
     if (provider === "resend") {
-      const ref = await resendSend(email);
+      const sent = await resendSend(email);
       await db
         .update(outbox)
-        .set({ status: "sent", providerRef: ref, sentAt: new Date().toISOString() })
+        .set({ status: "sent", providerRef: sent.id, sentAt: new Date().toISOString() })
         .where(eq(outbox.id, row.id));
-      return { status: "sent", provider, ref };
+      return { status: "sent", provider, ref: sent.id };
     }
     // Mock: mark sent instantly. The dashboard outbox shows the full email.
     await db
@@ -83,14 +99,23 @@ export async function sendEmail(email: OutgoingEmail): Promise<{ status: string;
     return { status: "sent", provider: "mock", ref: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : "send failed";
+    const definitive = (err as Error & { definitive?: boolean }).definitive ?? false;
     await db.update(outbox).set({ status: "failed", error: message }).where(eq(outbox.id, row.id));
-    return { status: "failed", provider, ref: null };
+    return { status: "failed", provider, ref: null, error: message, definitive };
   }
 }
 
-export async function listOutbox(limit = 40) {
-  const db = getDb();
-  return db.select().from(outbox).orderBy(desc(outbox.id)).limit(limit);
+/** Outbox rows for cards owned by the given user. Nobody else's mail. */
+export async function listOutboxForUser(userCardIds: string[], limit = 40) {
+  const db = await getDb();
+  if (userCardIds.length === 0) return [];
+  const { inArray } = await import("drizzle-orm");
+  return db
+    .select()
+    .from(outbox)
+    .where(inArray(outbox.cardId, userCardIds))
+    .orderBy(desc(outbox.id))
+    .limit(limit);
 }
 
 /** The "Panda has something for you" delivery email for a card. */
@@ -104,7 +129,7 @@ export function cardDeliveryEmail(opts: {
   const subject = `🐼 Panda has a little something for you, ${recipientName}`;
   const text = `Hi ${recipientName},\n\nPanda has arrived with a card for you. It is from ${senderName}, and it opens like a little gift.\n\nOpen it here: ${cardUrl}\n\n(No account needed. It is just for you.)\n\nWith love,\nPanda 💚`;
   const html = renderPandaEmail({
-    title: `A card for ${recipientName}`,
+    title: `A card for ${escapeHtml(recipientName)}`,
     preheader: `Panda has arrived with something from ${senderName}.`,
     bodyHtml: `
       <p style="margin:0 0 14px;">Panda has padded all this way with a small envelope, and it is addressed to <strong>${escapeHtml(recipientName)}</strong>.</p>
@@ -115,6 +140,28 @@ export function cardDeliveryEmail(opts: {
     footerNote: "Sent with love via Panda Messages.",
   });
   return { to: "", subject, html, text, kind: "card" };
+}
+
+/** The receipt after a payment, so the buyer has proof and a way back in. */
+export function receiptEmail(opts: {
+  buyerEmail: string;
+  recipientName: string;
+  dashboardUrl: string;
+  refundNoteUrl: string;
+}): OutgoingEmail {
+  const text = `Thank you. Your card for ${opts.recipientName} is in Panda's care.\n\nWatch it, edit it, or cancel it any time before it sends: ${opts.dashboardUrl}\n\nCancel before it sends and the $4.99 comes straight back, no questions. Details: ${opts.refundNoteUrl}\n\nWith love,\nPanda 💚`;
+  const html = renderPandaEmail({
+    title: "Your card is in Panda's care",
+    preheader: `The card for ${opts.recipientName} is set. Here is your receipt.`,
+    bodyHtml: `
+      <p style="margin:0 0 14px;">Thank you. The card for <strong>${escapeHtml(opts.recipientName)}</strong> is sealed and scheduled.</p>
+      <p style="margin:0 0 18px;">Watch the moment it gets opened, edit the words, or take it back entirely, any time before it sends.</p>
+      <a href="${opts.dashboardUrl}" style="display:inline-block;background:#157A55;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:999px;font-weight:600;font-size:15px;">Open my dashboard</a>
+      <p style="margin:18px 0 0;color:#64716A;font-size:13px;">Cancel before it sends and the $4.99 returns in full. <a href="${opts.refundNoteUrl}" style="color:#157A55;">The details are here.</a></p>
+    `,
+    footerNote: "Panda Messages",
+  });
+  return { to: opts.buyerEmail, subject: "Your receipt, and one card in Panda's care", html, text, kind: "receipt" };
 }
 
 export function claimEmail(opts: { email: string; claimUrl: string; cardUrl?: string }): OutgoingEmail {

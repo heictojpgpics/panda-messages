@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { OCCASIONS, getOccasion, occasionLabel } from "@/data/occasions";
@@ -37,6 +37,7 @@ interface Draft {
   theme: string;
   songInput: string;
   photos: string[];
+  step?: number;
 }
 
 const STEP_TITLES = ["What's the occasion?", "Who is it for?", "What would you like to say?", "Their card is ready"];
@@ -44,35 +45,50 @@ const STEP_TITLES = ["What's the occasion?", "Who is it for?", "What would you l
 export function Wizard() {
   const router = useRouter();
   const params = useSearchParams();
+  const editSlug = params.get("edit");
 
   const initial = useMemo<Draft>(() => {
-    const occasion = params.get("occasion") ?? "";
-    const custom = params.get("custom") ?? "";
+    // A refresh mid-flow should never cost anyone their words.
+    let saved: Partial<Draft> = {};
+    try {
+      saved = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? "{}");
+    } catch {}
+    const occasion = params.get("occasion") ?? saved.occasion ?? "";
+    const custom = params.get("custom") ?? saved.customOccasion ?? "";
     const replyTo = params.get("replyTo");
-    const to = params.get("to") ?? "";
+    const to = params.get("to") ?? saved.recipientName ?? "";
     const valid = OCCASIONS.some((o) => o.id === occasion);
     const draft: Draft = {
       occasion: valid ? occasion : custom ? "custom" : "",
       customOccasion: custom,
       recipientName: to,
-      senderName: "",
-      message: "",
-      signoff: "",
-      theme: "bamboo-grove",
-      songInput: "",
-      photos: [],
+      senderName: saved.senderName ?? "",
+      message: saved.message ?? "",
+      signoff: saved.signoff ?? "",
+      theme: saved.theme ?? "bamboo-grove",
+      songInput: saved.songInput ?? "",
+      photos: Array.isArray(saved.photos) ? saved.photos : [],
+      step: typeof saved.step === "number" ? saved.step : undefined,
     };
-    if (replyTo) {
-      draft.recipientName = to;
-    }
     return draft;
   }, [params]);
 
-  const [step, setStep] = useState(initial.occasion && initial.recipientName ? 2 : initial.occasion ? 1 : 0);
+  const [step, setStep] = useState(() => {
+    if (editSlug) return 3;
+    if (initial.occasion && initial.recipientName && initial.message) return 2;
+    if (initial.occasion && initial.recipientName) return 1;
+    return 0;
+  });
   const [draft, setDraft] = useState<Draft>(initial);
   const [seedIdx, setSeedIdx] = useState(0);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  // A card already saved server-side this session: reused on retry instead
+  // of creating a twin every time checkout hiccups.
+  const [madeCard, setMadeCard] = useState<{ id: string; slug: string; editToken?: string } | null>(null);
+  const [editingCard, setEditingCard] = useState<{ slug: string; editToken?: string } | null>(
+    editSlug ? { slug: editSlug } : null
+  );
 
   // Delivery state (step 4)
   const [delivery, setDelivery] = useState<"panda" | "self">("panda");
@@ -86,13 +102,54 @@ export function Wizard() {
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => {
     setDraft((d) => {
-      const next = { ...d, [key]: value };
+      const next = { ...d, [key]: value, step: key === "step" ? (value as number) : d.step };
       try {
         localStorage.setItem(DRAFT_KEY, JSON.stringify(next));
       } catch {}
       return next;
     });
   };
+
+  const setStepTracked = (n: number) => {
+    setStep(n);
+    set("step", n);
+  };
+
+  // Loading an existing card into the wizard (edit mode from the dashboard).
+  useEffect(() => {
+    if (!editingCard) return;
+    const tokens = (() => {
+      try {
+        return JSON.parse(localStorage.getItem(TOKENS_KEY) ?? "{}");
+      } catch {
+        return {};
+      }
+    })();
+    const editToken = tokens[editingCard.slug];
+    fetch(`/api/cards?slug=${editingCard.slug}${editToken ? `&editToken=${encodeURIComponent(editToken)}` : ""}`)
+      .then(async (r) => {
+        if (!r.ok) throw new Error("not yours");
+        return r.json();
+      })
+      .then((c) => {
+        setEditingCard({ slug: c.slug, editToken: editToken ?? undefined });
+        setDraft((d) => ({
+          ...d,
+          occasion: OCCASIONS.some((o) => o.id === c.occasion) ? c.occasion : "custom",
+          recipientName: c.recipientName ?? "",
+          senderName: c.senderName ?? "",
+          message: c.message ?? "",
+          signoff: c.signoff ?? "",
+          theme: c.theme ?? "bamboo-grove",
+          songInput: c.songId ? `https://youtu.be/${c.songId}` : "",
+          photos: Array.isArray(c.photos) ? c.photos : [],
+        }));
+      })
+      .catch(() => {
+        toast("That card could not be loaded. It may not be yours.");
+        router.replace("/dashboard");
+      });
+  }, [editingCard, router]);
 
   const occasion = draft.occasion;
   const seeds = MESSAGE_SEEDS[occasion] ?? MESSAGE_SEEDS["just-because"];
@@ -118,7 +175,63 @@ export function Wizard() {
   };
 
   // ---------- actions ----------
+  const saveEdits = async (): Promise<boolean> => {
+    if (!editingCard) return false;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/cards/${editingCard.slug}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          editToken: editingCard.editToken,
+          senderName: draft.senderName,
+          recipientName: draft.recipientName,
+          message: draft.message,
+          signoff,
+          theme: draft.theme,
+          songId,
+          photos: draft.photos,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast(data.error ?? "The save did not go through.");
+        return false;
+      }
+      toast("Saved. Panda resealed the envelope.");
+      try {
+        localStorage.removeItem(DRAFT_KEY);
+      } catch {}
+      router.push(`/dashboard?watch=${editingCard.slug}`);
+      return true;
+    } catch {
+      toast("The connection hiccuped. Nothing was lost.");
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const createCard = async (): Promise<{ id: string; slug: string; editToken?: string } | null> => {
+    // Reuse the card already made this session instead of minting twins
+    // when checkout fails and the user tries again.
+    if (madeCard) {
+      await fetch(`/api/cards/${madeCard.slug}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          editToken: madeCard.editToken,
+          senderName: draft.senderName,
+          recipientName: draft.recipientName,
+          message: draft.message,
+          signoff,
+          theme: draft.theme,
+          songId,
+          photos: draft.photos,
+        }),
+      }).catch(() => {});
+      return madeCard;
+    }
     const res = await fetch("/api/cards", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -132,6 +245,7 @@ export function Wizard() {
         songId,
         songProvider: songId ? "youtube" : null,
         photos: draft.photos,
+        replyTo: params.get("replyTo"),
       }),
     });
     const data = await res.json();
@@ -139,6 +253,7 @@ export function Wizard() {
       toast(data.error ?? "Something went wrong");
       return null;
     }
+    setMadeCard(data);
     return data;
   };
 
@@ -200,14 +315,22 @@ export function Wizard() {
   };
 
   const paidSend = async () => {
-    if (delivery === "panda" && !recipientEmail.trim()) {
-      toast("Where should Panda bring it? Their email is needed.");
-      return;
+    if (delivery === "panda") {
+      const email = recipientEmail.trim();
+      if (!email) {
+        toast("Where should Panda bring it? Their email is needed.");
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+        toast("That email does not look right. Check it once more?");
+        return;
+      }
     }
     if (when === "day" && !date) {
       toast("Pick the day Panda should send it.");
       return;
     }
+    if (busy) return;
     setBusy(true);
     try {
       const card = await createCard();
@@ -236,14 +359,21 @@ export function Wizard() {
         {/* Top bar */}
         <div className="flex items-center justify-between gap-4">
           <button
-            onClick={() => (step === 0 ? router.push("/") : setStep(step - 1))}
+            onClick={() => {
+              if (editingCard) {
+                router.push("/dashboard");
+                return;
+              }
+              if (step === 0) router.push("/");
+              else setStepTracked(step - 1);
+            }}
             className="inline-flex items-center gap-1.5 text-[13.5px] font-medium text-ink/60 hover:text-ink transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back
+            {editingCard ? "Back to dashboard" : "Back"}
           </button>
           <p className="text-[12px] font-semibold uppercase tracking-[0.2em] text-ink/40">
-            Step {step + 1} of 4
+            {editingCard ? "Editing your card" : `Step ${step + 1} of 4`}
           </p>
           <div className="flex gap-1.5" aria-hidden>
             {[0, 1, 2, 3].map((i) => (
@@ -270,22 +400,27 @@ export function Wizard() {
                 transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
               >
                 <h1 className="font-display font-semibold text-ink text-[clamp(1.5rem,3.4vw,2.1rem)] leading-tight">
-                  {STEP_TITLES[step]}
+                  {editingCard
+                    ? step === 3
+                      ? "Save your changes"
+                      : "Fix it up"
+                    : STEP_TITLES[step]}
                 </h1>
 
                 {/* STEP 0: occasion */}
-                {step === 0 && (
+                {step === 0 && !editingCard && (
                   <OccasionPicker
                     value={occasion}
-                    custom={draft.customOccasion}
+                    custom={draft.customOccasion ?? ""}
                     onPick={(id) => {
                       set("occasion", id);
                       set("customOccasion", "");
-                      setStep(1);
+                      setStepTracked(1);
                     }}
                     onCustom={(text) => {
                       set("occasion", "custom");
                       set("customOccasion", text);
+                      setStepTracked(1);
                     }}
                   />
                 )}
@@ -324,7 +459,7 @@ export function Wizard() {
                       />
                     </div>
                     <Button
-                      onClick={() => setStep(2)}
+                      onClick={() => setStepTracked(2)}
                       disabled={!canNext}
                       className="sheen w-full h-12 rounded-full text-[15px] font-semibold"
                       size="lg"
@@ -341,14 +476,36 @@ export function Wizard() {
                     set={set}
                     songId={songId}
                     fillSeed={fillSeed}
-                    onNext={() => setStep(3)}
-                    canNext={canNext ?? false}
+                    onNext={() => setStepTracked(3)}
+                    canNext={Boolean(canNext)}
                     recipientName={draft.recipientName}
                   />
                 )}
 
                 {/* STEP 3: ready */}
-                {step === 3 && (
+                {step === 3 && editingCard ? (
+                  <div className="mt-7 max-w-xl space-y-6">
+                    <div className="rounded-2xl bg-jade-soft/50 border border-jade/20 p-5 text-[13.5px] text-ink-soft leading-relaxed">
+                      You are editing a card that has not left yet. Save and Panda
+                      swaps the words inside the same envelope, same delivery day.
+                      Nothing about the plan changes.
+                    </div>
+                    <Button
+                      onClick={() => void saveEdits()}
+                      disabled={busy || !draft.message.trim() || !draft.recipientName.trim() || !draft.senderName.trim()}
+                      className="sheen w-full h-12 rounded-full text-[15.5px] font-semibold"
+                      size="lg"
+                    >
+                      {busy ? "Saving..." : "Save the changes"}
+                    </Button>
+                    <button
+                      onClick={() => setStepTracked(2)}
+                      className="w-full text-center text-[13px] font-medium text-ink/55 hover:text-jade py-2 transition-colors"
+                    >
+                      Keep editing
+                    </button>
+                  </div>
+                ) : step === 3 ? (
                   <ReadyStep
                     draft={draft}
                     signoff={signoff}
@@ -372,7 +529,7 @@ export function Wizard() {
                       sendFree();
                     }}
                   />
-                )}
+                ) : null}
               </motion.div>
             </AnimatePresence>
           </div>
@@ -392,7 +549,7 @@ export function Wizard() {
                   Open it like they will
                 </button>
               </div>
-              <motion.div layout className={cn(draft.photos.length ? "" : "")}>
+              <motion.div layout>
                 <MiniCard
                   data={{
                     occasion: draft.occasion === "custom" ? "just-because" : draft.occasion || "just-because",
@@ -437,7 +594,7 @@ export function Wizard() {
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
         data={{
-          occasion: draft.occasion === "custom" ? "just-because" : draft.occasion || "just-because",
+          occasionLabel: effectiveOccasionLabel,
           recipientName: draft.recipientName || "them",
           senderName: draft.senderName || "you",
           message: draft.message || "Your words will be right here.",
@@ -446,6 +603,7 @@ export function Wizard() {
           songId,
           photos: draft.photos,
           watermark: true,
+          plan: "free",
         }}
         occasionLabel={effectiveOccasionLabel}
       />
@@ -739,7 +897,12 @@ function MessageStep({
             return (
               <button
                 key={t.id}
-                onClick={() => set("theme", t.id)}
+                onClick={() => {
+                  set("theme", t.id);
+                  if (!free) {
+                    toast(`${t.name} rides along with the full card. Pick it freely, it locks in when you pay.`);
+                  }
+                }}
                 title={t.blurb}
                 className={cn(
                   "relative rounded-xl p-1.5 border-2 bg-paper flex flex-col items-center gap-1 transition-all",
@@ -987,8 +1150,25 @@ function ShareScreen({ slug, senderName, recipientName }: { slug: string; sender
   const url = typeof window !== "undefined" ? `${window.location.origin}/c/${slug}` : `/c/${slug}`;
 
   const copy = async () => {
-    await navigator.clipboard.writeText(url);
-    setCopied(true);
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+    } catch {
+      // Older browsers and non-secure contexts: select the text so a
+      // long-press or ctrl-C works.
+      try {
+        const range = document.createRange();
+        const node = document.getElementById("share-url-text");
+        if (node) {
+          range.selectNodeContents(node);
+          const sel = window.getSelection();
+          sel?.removeAllRanges();
+          sel?.addRange(range);
+        }
+      } catch {}
+      toast("Copy did not work here. The link is selected, copy it manually.");
+      return;
+    }
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -1011,7 +1191,7 @@ function ShareScreen({ slug, senderName, recipientName }: { slug: string; sender
         </p>
 
         <div className="mt-6 flex items-center gap-2 rounded-full border border-ink/15 bg-paper pl-5 pr-2 py-2">
-          <span className="flex-1 truncate text-left text-[13px] text-ink/70">{url}</span>
+          <span id="share-url-text" className="flex-1 truncate text-left text-[13px] text-ink/70">{url}</span>
           <Button onClick={copy} size="sm" className="rounded-full h-9 px-4">
             {copied ? <><Check className="h-3.5 w-3.5" /> Copied</> : "Copy"}
           </Button>

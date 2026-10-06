@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { getCardBySlug, getCardById, updateCard, attachCardToUser } from "@/lib/cards";
+import { getCardBySlug, getCardById, updateCard, attachCardToUser, cardOwnedBy, logEvent } from "@/lib/cards";
 
 /**
  * Update a card while it is still editable. A card belongs to its maker:
@@ -17,9 +17,8 @@ export async function PATCH(req: NextRequest) {
     if (!card) return NextResponse.json({ error: "Card not found." }, { status: 404 });
 
     const user = await getCurrentUser();
-    const ownsByUser = user && card.userId && card.userId === user.id;
-    const ownsByToken = editToken && card.editToken === editToken;
-    if (!ownsByUser && !ownsByToken) {
+    const owns = await cardOwnedBy(card, { user, editToken });
+    if (!owns) {
       return NextResponse.json({ error: "This card is not yours to edit." }, { status: 403 });
     }
 
@@ -38,6 +37,20 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: "Message needed, under 300 characters." }, { status: 400 });
       }
       patch.message = message;
+    }
+    if (body.senderName !== undefined) {
+      const name = String(body.senderName).trim();
+      if (!name || name.length > 40) {
+        return NextResponse.json({ error: "Your name is needed (max 40 characters)." }, { status: 400 });
+      }
+      patch.senderName = name;
+    }
+    if (body.recipientName !== undefined) {
+      const name = String(body.recipientName).trim();
+      if (!name || name.length > 40) {
+        return NextResponse.json({ error: "Their name is needed (max 40 characters)." }, { status: 400 });
+      }
+      patch.recipientName = name;
     }
     if (body.signoff !== undefined) patch.signoff = String(body.signoff).trim().slice(0, 60);
     if (body.theme !== undefined && typeof body.theme === "string") patch.theme = body.theme;
@@ -64,6 +77,7 @@ export async function PATCH(req: NextRequest) {
 
     if (Object.keys(patch).length > 0) {
       await updateCard(card.id, patch);
+      await logEvent(card.id, "edited", { fields: Object.keys(patch) });
     }
     if (user && !card.userId) {
       await attachCardToUser(card.id, user.id);
@@ -87,9 +101,8 @@ export async function GET(req: NextRequest) {
 
   // Maker view: only with the right credentials.
   const user = await getCurrentUser();
-  const ownsByUser = user && card.userId && card.userId === user.id;
-  const ownsByToken = editToken && card.editToken === editToken;
-  if (!ownsByUser && !ownsByToken) {
+  const owns = await cardOwnedBy(card, { user, editToken });
+  if (!owns) {
     return NextResponse.json({ error: "This card is not yours." }, { status: 403 });
   }
 
@@ -107,6 +120,7 @@ export async function GET(req: NextRequest) {
     signoff: card.signoff,
     theme: card.theme,
     songId: card.songId,
+    songInput: card.songId ? `https://youtu.be/${card.songId}` : "",
     photos: card.photos ? JSON.parse(card.photos) : [],
   });
 }

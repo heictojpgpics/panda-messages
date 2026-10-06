@@ -36,6 +36,7 @@ export default function CheckoutPage() {
   const [notFoundCard, setNotFoundCard] = useState(false);
   const [phase, setPhase] = useState<Phase>("pay");
   const [claimUrl, setClaimUrl] = useState<string | null>(null);
+  const [editToken, setEditToken] = useState<string | null>(null);
 
   const [email, setEmail] = useState("");
   const [cardNumber, setCardNumber] = useState("");
@@ -51,6 +52,12 @@ export default function CheckoutPage() {
       })
       .then((d) => {
         setCard(d.card);
+        // The edit token lives client-side, keyed by slug. Without it the
+        // completion endpoint cannot know this checkout belongs to us.
+        try {
+          const tokens = JSON.parse(localStorage.getItem("panda-edit-tokens") ?? "{}");
+          if (tokens[d.card.slug]) setEditToken(tokens[d.card.slug]);
+        } catch {}
         fetch("/api/auth/me")
           .then((r) => (r.ok ? r.json() : { user: null }))
           .then((me) => {
@@ -88,7 +95,7 @@ export default function CheckoutPage() {
       const res = await fetch("/api/checkout/mock-complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cardId, email, name }),
+        body: JSON.stringify({ cardId, email, name, editToken }),
       });
       const data = await res.json();
       if (!res.ok) {

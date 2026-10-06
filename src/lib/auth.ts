@@ -2,11 +2,14 @@ import { cookies } from "next/headers";
 import { getDb } from "./db";
 import { sessions, users, passwordClaims } from "./db/schema";
 import { eq, and, gt, isNull } from "drizzle-orm";
-import { newSessionToken, newToken, newId } from "./ids";
+import { newSessionToken, newToken, newId, sha256Hex, base64ToBytes, bytesToBase64 } from "./ids";
 
 /**
  * Session auth that works identically on Node and Cloudflare Workers.
- * Passwords use PBKDF2 from Web Crypto (available in both runtimes).
+ * Passwords use PBKDF2 from Web Crypto (available in both runtimes), and
+ * base64 goes through the Web helpers rather than Buffer so the file stays
+ * Workers-safe. Session and claim tokens are stored hashed: a leaked
+ * database is not a leaked login.
  */
 
 const SESSION_COOKIE = "pm_session";
@@ -32,20 +35,21 @@ async function pbkdf2(password: string, salt: Uint8Array): Promise<string> {
     key,
     256
   );
-  return Buffer.from(bits).toString("base64");
+  return bytesToBase64(new Uint8Array(bits));
 }
 
 export async function hashPassword(password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const hash = await pbkdf2(password, salt);
-  return `pbkdf2:${ITERATIONS}:${Buffer.from(salt).toString("base64")}:${hash}`;
+  return `pbkdf2:${ITERATIONS}:${bytesToBase64(salt)}:${hash}`;
 }
 
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {
   const parts = stored.split(":");
   if (parts.length !== 4 || parts[0] !== "pbkdf2") return false;
   const iterations = Number(parts[1]);
-  const salt = new Uint8Array(Buffer.from(parts[2], "base64"));
+  if (!Number.isFinite(iterations) || iterations < 1) return false;
+  const salt = base64ToBytes(parts[2]);
   const expected = parts[3];
   const actual = await pbkdf2(password, salt);
   if (actual.length !== expected.length) return false;
@@ -68,7 +72,7 @@ export function isValidEmail(email: string): boolean {
 }
 
 export async function findUserByEmail(email: string) {
-  const db = getDb();
+  const db = await getDb();
   const rows = await db
     .select()
     .from(users)
@@ -78,7 +82,7 @@ export async function findUserByEmail(email: string) {
 }
 
 export async function createUser(email: string, password: string | null, name?: string) {
-  const db = getDb();
+  const db = await getDb();
   const now = new Date().toISOString();
   const id = newId();
   const passwordHash = password ? await hashPassword(password) : null;
@@ -94,7 +98,7 @@ export async function createUser(email: string, password: string | null, name?: 
 }
 
 export async function setPassword(userId: string, password: string): Promise<void> {
-  const db = getDb();
+  const db = await getDb();
   const passwordHash = await hashPassword(password);
   await db
     .update(users)
@@ -105,11 +109,11 @@ export async function setPassword(userId: string, password: string): Promise<voi
 // ---------- password claim tokens (for accounts created at checkout) ----------
 
 export async function createPasswordClaim(userId: string): Promise<string> {
-  const db = getDb();
+  const db = await getDb();
   const token = newToken(24);
   const expires = new Date(Date.now() + 1000 * 60 * 60 * 48); // 48h
   await db.insert(passwordClaims).values({
-    token,
+    token: await sha256Hex(token),
     userId,
     expiresAt: expires.toISOString(),
     usedAt: null,
@@ -118,13 +122,14 @@ export async function createPasswordClaim(userId: string): Promise<string> {
 }
 
 export async function consumePasswordClaim(token: string) {
-  const db = getDb();
+  const db = await getDb();
+  const hashed = await sha256Hex(token);
   const rows = await db
     .select()
     .from(passwordClaims)
     .where(
       and(
-        eq(passwordClaims.token, token),
+        eq(passwordClaims.token, hashed),
         isNull(passwordClaims.usedAt),
         gt(passwordClaims.expiresAt, new Date().toISOString())
       )
@@ -135,7 +140,7 @@ export async function consumePasswordClaim(token: string) {
   await db
     .update(passwordClaims)
     .set({ usedAt: new Date().toISOString() })
-    .where(eq(passwordClaims.token, token));
+    .where(eq(passwordClaims.token, hashed));
   const userRows = await db.select().from(users).where(eq(users.id, claim.userId)).limit(1);
   return userRows[0] ?? null;
 }
@@ -143,11 +148,11 @@ export async function consumePasswordClaim(token: string) {
 // ---------- sessions ----------
 
 export async function createSession(userId: string): Promise<void> {
-  const db = getDb();
+  const db = await getDb();
   const token = newSessionToken();
   const expires = new Date(Date.now() + 1000 * 60 * 60 * 24 * SESSION_DAYS);
   await db.insert(sessions).values({
-    token,
+    token: await sha256Hex(token),
     userId,
     expiresAt: expires.toISOString(),
     createdAt: new Date().toISOString(),
@@ -166,8 +171,8 @@ export async function destroySession(): Promise<void> {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
   if (token) {
-    const db = getDb();
-    await db.delete(sessions).where(eq(sessions.token, token));
+    const db = await getDb();
+    await db.delete(sessions).where(eq(sessions.token, await sha256Hex(token)));
   }
   store.delete(SESSION_COOKIE);
 }
@@ -176,7 +181,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
   if (!token) return null;
-  const db = getDb();
+  const db = await getDb();
   const rows = await db
     .select({
       id: users.id,
@@ -185,7 +190,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
     })
     .from(sessions)
     .innerJoin(users, eq(sessions.userId, users.id))
-    .where(and(eq(sessions.token, token), gt(sessions.expiresAt, new Date().toISOString())))
+    .where(and(eq(sessions.token, await sha256Hex(token)), gt(sessions.expiresAt, new Date().toISOString())))
     .limit(1);
   return rows[0] ?? null;
 }

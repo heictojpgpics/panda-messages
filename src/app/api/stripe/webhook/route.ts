@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyStripeSignature } from "@/lib/payments";
-import { attachCardToUser, getCardById, logEvent, markPaid } from "@/lib/cards";
+import { attachCardToUser, getCardById, markPaid } from "@/lib/cards";
 import {
   createPasswordClaim,
   createUser,
   findUserByEmail,
 } from "@/lib/auth";
-import { sendEmail, claimEmail } from "@/lib/email";
-import { deliverCard } from "@/lib/delivery";
+import { sendEmail, claimEmail, receiptEmail } from "@/lib/email";
+import { deliverCard, siteUrl } from "@/lib/delivery";
 
 export const dynamic = "force-dynamic";
 
@@ -31,8 +31,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true });
   }
 
-  const session = event.data.object;
-  const cardId = String(session.metadata?.cardId ?? session.client_reference_id ?? "");
+  const session = event.data.object as Record<string, unknown>;
+  const metadata = (session.metadata ?? {}) as Record<string, unknown>;
+  const cardId = String(metadata.cardId ?? session.client_reference_id ?? "");
   if (!cardId) return NextResponse.json({ received: true });
 
   const card = await getCardById(cardId);
@@ -40,15 +41,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true });
   }
 
-  const customerEmail = String(session.customer_details?.email ?? session.customer_email ?? "");
+  const customerDetails = (session.customer_details ?? {}) as Record<string, unknown>;
+  const customerEmail = String(customerDetails.email ?? session.customer_email ?? "");
   const ref = String(session.id ?? "");
 
-  await markPaid(card.id, {
+  // markPaid is the only gate: one webhook (or ten retries) pays a card
+  // exactly once.
+  const won = await markPaid(card.id, {
     paymentRef: ref,
     provider: "stripe",
     deliverAt: card.deliverAt,
     recipientEmail: card.recipientEmail,
   });
+  if (!won) return NextResponse.json({ received: true });
 
   // Provision the account the card now belongs to.
   if (customerEmail) {
@@ -61,15 +66,24 @@ export async function POST(req: NextRequest) {
     }
     await attachCardToUser(card.id, account.id);
     if (claimUrl) {
-      const origin = process.env.NEXT_PUBLIC_SITE_URL ?? req.nextUrl.origin;
+      const origin = process.env.NEXT_PUBLIC_SITE_URL ?? siteUrl();
       const mail = claimEmail({ email: account.email, claimUrl: `${origin}${claimUrl}` });
       mail.to = account.email;
       await sendEmail(mail);
     }
+    const receipt = receiptEmail({
+      buyerEmail: account.email,
+      recipientName: card.recipientName,
+      dashboardUrl: `${siteUrl()}/dashboard?watch=${card.slug}`,
+      refundNoteUrl: `${siteUrl()}/refund-policy`,
+    });
+    receipt.to = account.email;
+    receipt.cardId = card.id;
+    await sendEmail(receipt);
   }
 
   if (!card.deliverAt) {
-    await deliverCard({ ...card, plan: "paid", status: "scheduled", deliverAt: null });
+    await deliverCard(card.id);
   }
 
   return NextResponse.json({ received: true });

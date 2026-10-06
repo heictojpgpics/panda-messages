@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { listCardsForUser, listEventsForUser } from "@/lib/cards";
-import { listOutbox } from "@/lib/email";
+import { listOutboxForUser } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -10,10 +10,11 @@ export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ user: null }, { status: 401 });
 
-  const [cards, events, outbox] = await Promise.all([
-    listCardsForUser(user.id),
+  const cards = await listCardsForUser(user.id);
+  const cardIds = cards.map((c) => c.id);
+  const [events, outbox] = await Promise.all([
     listEventsForUser(user.id),
-    listOutbox(25),
+    listOutboxForUser(cardIds, 25),
   ]);
 
   return NextResponse.json({

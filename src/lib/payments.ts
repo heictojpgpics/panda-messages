@@ -96,6 +96,9 @@ export async function verifyStripeSignature(payload: string, header: string): Pr
   const timestamp = parts["t"];
   const signature = parts["v1"];
   if (!timestamp || !signature) return false;
+  // Reject stale signatures: replaying an old webhook should not work.
+  const age = Math.abs(Date.now() / 1000 - Number(timestamp));
+  if (!Number.isFinite(age) || age > 60 * 10) return false;
   const enc = new TextEncoder();
   const key = await crypto.subtle.importKey(
     "raw",
@@ -105,7 +108,9 @@ export async function verifyStripeSignature(payload: string, header: string): Pr
     ["sign"]
   );
   const mac = await crypto.subtle.sign("HMAC", key, enc.encode(`${timestamp}.${payload}`));
-  const expected = Buffer.from(mac).toString("hex");
+  const expected = Array.from(new Uint8Array(mac))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
   if (expected.length !== signature.length) return false;
   let diff = 0;
   for (let i = 0; i < expected.length; i++) {

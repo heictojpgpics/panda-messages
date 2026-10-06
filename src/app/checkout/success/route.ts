@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getCardById } from "@/lib/cards";
+import { opportunisticTick } from "@/lib/delivery";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,11 @@ export async function GET(req: NextRequest) {
     if (refreshed) card = refreshed;
   }
 
+  // Give the delivery engine a nudge while we are here.
+  opportunisticTick().catch(() => {});
+
+  const paid = card.plan === "paid" ? "1" : "0";
   return NextResponse.redirect(
-    new URL(`/dashboard?watch=${card.slug}&paid=1`, req.url)
+    new URL(`/dashboard?watch=${card.slug}&paid=${paid}`, req.url)
   );
 }

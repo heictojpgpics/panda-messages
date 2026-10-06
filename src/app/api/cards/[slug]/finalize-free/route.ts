@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { getCardBySlug, markFreeFinalized } from "@/lib/cards";
+import { getCardBySlug, markFreeFinalized, cardOwnedBy } from "@/lib/cards";
 
 /** The free card goes live: its link is now the delivery. */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
@@ -12,9 +12,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     const user = await getCurrentUser();
     const body = await req.json().catch(() => ({}));
     const editToken = body.editToken ? String(body.editToken) : null;
-    const owns =
-      (user && card.userId && card.userId === user.id) ||
-      (editToken && editToken === card.editToken);
+    const owns = await cardOwnedBy(card, { user, editToken });
     if (!owns) return NextResponse.json({ error: "This card is not yours." }, { status: 403 });
 
     if (card.status === "draft") {

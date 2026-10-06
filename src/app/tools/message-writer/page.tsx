@@ -206,7 +206,7 @@ export default function MessageWriterPage() {
 
           {/* Drafts */}
           <div className="mt-8 space-y-4" aria-live="polite">
-            <AnimatePresence mode="pop-layout">
+            <AnimatePresence mode="popLayout">
               {drafts.map((d, i) => (
                 <motion.div
                   key={d}

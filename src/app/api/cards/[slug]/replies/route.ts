@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addReply, getCardBySlug, getRepliesForCard } from "@/lib/cards";
+import { clientIp, rateLimit } from "@/lib/ratelimit";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await params;
     const card = await getCardBySlug(slug);
     if (!card) return NextResponse.json({ error: "Card not found." }, { status: 404 });
+
+    const verdict = await rateLimit(`reply:${clientIp(req)}`, 10, 10 * 60 * 1000);
+    if (!verdict.ok) {
+      return NextResponse.json({ error: "Panda is holding the pen for a moment. Try again shortly." }, { status: 429 });
+    }
 
     const body = await req.json();
     const authorName = String(body.authorName ?? "").trim();

@@ -3,12 +3,18 @@ import { getCurrentUser, isValidEmail, normalizeEmail } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { cards } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { getCardBySlug, logEvent } from "@/lib/cards";
+import { getCardBySlug, logEvent, cardOwnedBy } from "@/lib/cards";
 import { createStripeCheckout, paymentMode } from "@/lib/payments";
+import { clientIp, rateLimit } from "@/lib/ratelimit";
 
 /** Start a paid checkout for a card. */
 export async function POST(req: NextRequest) {
   try {
+    const verdict = await rateLimit(`checkout:${clientIp(req)}`, 20, 60 * 60 * 1000);
+    if (!verdict.ok) {
+      return NextResponse.json({ error: "Give it a moment and try again." }, { status: 429 });
+    }
+
     const body = await req.json();
     const slug = String(body.slug ?? "");
     const recipientEmail = body.recipientEmail ? normalizeEmail(String(body.recipientEmail)) : null;
@@ -19,10 +25,16 @@ export async function POST(req: NextRequest) {
     if (!card) return NextResponse.json({ error: "Card not found." }, { status: 404 });
 
     const user = await getCurrentUser();
-    const owns =
-      (user && card.userId && card.userId === user.id) ||
-      (editToken && editToken === card.editToken);
+    const owns = await cardOwnedBy(card, { user, editToken });
     if (!owns) return NextResponse.json({ error: "This card is not yours." }, { status: 403 });
+
+    // A card that already sent, or was cancelled, cannot be re-sold.
+    if (card.status !== "draft" && card.status !== "awaiting_payment") {
+      return NextResponse.json(
+        { error: "This card already left. Make a new one, they are quick." },
+        { status: 409 }
+      );
+    }
 
     if (recipientEmail && !isValidEmail(recipientEmail)) {
       return NextResponse.json({ error: "Their email does not look right." }, { status: 400 });
@@ -33,7 +45,7 @@ export async function POST(req: NextRequest) {
 
     // Persist the delivery plan before payment so the pipeline downstream
     // (webhook or mock completion) reads it off the card itself.
-    const db = getDb();
+    const db = await getDb();
     await db
       .update(cards)
       .set({

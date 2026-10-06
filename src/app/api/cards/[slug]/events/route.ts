@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getCardBySlug, listEventsForCard } from "@/lib/cards";
+import { getCardBySlug, listEventsForCard, cardOwnedBy } from "@/lib/cards";
 import { getCurrentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -18,9 +18,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
   const user = await getCurrentUser();
   const url = new URL(req.url);
   const editToken = url.searchParams.get("editToken");
-  const owns =
-    (user && card.userId && card.userId === user.id) ||
-    (editToken && editToken === card.editToken);
+  const owns = await cardOwnedBy(card, { user, editToken });
   if (!owns) return new Response("forbidden", { status: 403 });
 
   const encoder = new TextEncoder();
