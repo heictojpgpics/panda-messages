@@ -28,3 +28,21 @@
 - Authenticated local flow: sign up, create a draft, reject draft reaction and reply with `409`, finalize the free card, accept one live reaction and reply with `200`.
 - Ownership flow: checkout details reject an unauthenticated request with `403` and accept the original edit token with `200`.
 - Draft update flow: a route-bound `PATCH` returns `200` for the authenticated owner.
+
+## Follow-up refinement, 2026-10-07
+
+### Findings and changes
+
+- Draft persistence and edit-token handling had grown into separate, easy-to-miss local-storage snippets across the composer, checkout, and dashboard. Replaced them with one versioned Zustand memory store, including a read-only bridge for an unfinished legacy draft. A saved wizard step now resumes at that exact point.
+- The reaction and reply write routes protected draft cards, but their read routes still exposed draft activity. Reads now enforce the same live-card rule.
+- Reworked the live-card response area: reaction choices now state their count accurately, retain a selected state after a successful send, support keyboard focus and pressed semantics, and do not celebrate a duplicate request. The reply form is clearer, calmer, and does not expose private reply text to every visitor holding a shared link.
+- Replaced the repeated landing mascot sprite in the hero with an interactive rotating wardrobe of the new transparent portraits. The card preview and theme picker already use the theme-specific portrait, so each wrapping now has a coherent illustration throughout the journey.
+- Generated and compressed ten additional transparent, hand-painted Panda portraits: bamboo, flowers, stargazer, velvet, sun, winter, autumn, confetti, sea, and lantern. Together with the existing themed portraits, all fourteen themes have a matching Panda treatment.
+- Corrected the theme collection count on the landing page.
+
+### Verification
+
+- `npm run lint` passes.
+- Production build passes with `NEXT_TURBOPACK_EXPERIMENTAL_USE_SYSTEM_TLS_CERTS=1 npm run build`.
+- Local HTTP checks return `200` for the landing page and every new portrait asset.
+- Read-only live-card API smoke test: a local draft returns `409` from both reaction and reply reads; an already-sent card returns `200` from both endpoints.

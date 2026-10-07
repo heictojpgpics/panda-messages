@@ -54,6 +54,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
   const { slug } = await params;
   const card = await getCardBySlug(slug);
   if (!card) return NextResponse.json({ error: "Card not found." }, { status: 404 });
+  if (card.status !== "sent" && card.status !== "opened") {
+    return NextResponse.json({ error: "This card is not ready for reactions yet." }, { status: 409 });
+  }
   const counts = await getReactionsForCard(card.id);
   return NextResponse.json({ counts });
 }

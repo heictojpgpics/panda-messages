@@ -60,7 +60,7 @@ export function ThemesSection() {
               <strong className="text-ink">{theme.name}.</strong> {theme.blurb}
             </p>
             <p className="mt-1 text-center text-[11.5px] text-ink/40">
-              Bamboo Grove comes free. The other ten arrive with the full card.
+              Bamboo Grove comes free. The other thirteen arrive with the full card.
             </p>
           </div>
 

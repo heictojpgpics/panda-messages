@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { occasionLabel } from "@/data/occasions";
 import { SITE } from "@/lib/config";
 import { toast } from "sonner";
+import { readEditToken } from "@/stores/card-memory";
 import { Lock, CreditCard, Calendar, Sparkles, ArrowRight, Check, Mail } from "lucide-react";
 
 interface CardInfo {
@@ -46,14 +47,7 @@ export default function CheckoutPage() {
   const [name, setName] = useState("");
 
   useEffect(() => {
-    const tokens = (() => {
-      try {
-        return JSON.parse(localStorage.getItem("panda-edit-tokens") ?? "{}");
-      } catch {
-        return {};
-      }
-    })();
-    const token = tokens[cardId];
+    const token = readEditToken(cardId);
     fetch(`/api/checkout/info?cardId=${encodeURIComponent(cardId)}${token ? `&editToken=${encodeURIComponent(token)}` : ""}`)
       .then(async (r) => {
         if (!r.ok) throw new Error("not found");

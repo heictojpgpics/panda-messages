@@ -356,6 +356,7 @@ function TheCard({ data, theme, mode }: { data: CardSceneData; theme: Theme; mod
 
 function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string; onReplay: () => void }) {
   const [reacted, setReacted] = useState<Record<string, number>>({});
+  const [sentKinds, setSentKinds] = useState<Set<string>>(() => new Set());
   const [burst, setBurst] = useState<{ id: number; emoji: string }[]>([]);
   const [replyOpen, setReplyOpen] = useState(false);
   const [replyName, setReplyName] = useState("");
@@ -379,6 +380,7 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
   }, [slug]);
 
   const react = async (kind: string, emoji: string) => {
+    if (sentKinds.has(kind)) return;
     setReactionError(null);
     try {
       const res = await fetch(`/api/cards/${slug}/reactions`, {
@@ -391,8 +393,13 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
         setReactionError(body.error ?? "That reaction did not make it through. Try again.");
         return;
       }
-      if (!body.fresh) return;
+      if (!body.fresh) {
+        setSentKinds((kinds) => new Set(kinds).add(kind));
+        setReactionError("That one is already tucked into the envelope.");
+        return;
+      }
       setReacted((r) => ({ ...r, [kind]: (r[kind] ?? 0) + 1 }));
+      setSentKinds((kinds) => new Set(kinds).add(kind));
       const id = burstId.current++;
       setBurst((b) => [...b, { id, emoji }]);
       setTimeout(() => setBurst((b) => b.filter((x) => x.id !== id)), 2400);
@@ -413,6 +420,7 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
       });
       if (res.ok) {
         setReplySent(true);
+        setReplyText("");
       } else {
         const body = await res.json().catch(() => ({}));
         setReplyError(body.error ?? "The reply did not go through. Try once more?");
@@ -454,23 +462,39 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
         </AnimatePresence>
       </div>
 
-      <div className="rounded-3xl glass-card p-5 sm:p-6">
-        <p className="text-center text-[13px] font-medium text-ink/60">
-          Send a little love back to {data.senderName}
-        </p>
-        <div className="mt-3.5 flex flex-wrap justify-center gap-2.5">
+      <div className="rounded-[26px] border border-ink/[0.08] bg-paper/80 p-4 shadow-[0_18px_45px_-34px_rgba(22,36,28,0.65)] backdrop-blur-sm sm:p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[13.5px] font-semibold text-ink">Leave a little feeling behind</p>
+            <p className="mt-0.5 text-[11.5px] leading-relaxed text-ink/50">
+              {data.senderName} will see the reactions on this card.
+            </p>
+          </div>
+          <span className="shrink-0 rounded-full bg-jade/10 px-2.5 py-1 text-[10.5px] font-semibold text-jade">
+            private link
+          </span>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {REACTION_KINDS.map((r) => {
             const count = reacted[r.id] ?? 0;
+            const sent = sentKinds.has(r.id);
             return (
               <button
                 key={r.id}
                 onClick={() => react(r.id, r.emoji)}
-                aria-label={`${r.label}${count ? `, you sent ${count}` : ""}`}
-                className="relative rounded-full border border-ink/10 bg-paper px-4 py-2.5 text-xl hover:scale-110 hover:border-blush/40 active:scale-95 transition-transform"
+                aria-pressed={sent}
+                aria-label={`${r.label}${count ? `, ${count} received` : ""}`}
+                className={cn(
+                  "relative flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-3 py-2.5 text-[12px] font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-jade/45",
+                  sent
+                    ? "border-jade/35 bg-jade/10 text-jade"
+                    : "border-ink/[0.09] bg-white/70 text-ink/70 hover:-translate-y-0.5 hover:border-blush/40 hover:shadow-[0_8px_18px_-12px_rgba(22,36,28,0.5)] active:translate-y-0"
+                )}
               >
-                {r.emoji}
+                <span className="text-lg" aria-hidden>{r.emoji}</span>
+                <span>{r.label}</span>
                 {count > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 grid place-items-center rounded-full bg-blush text-white text-[10.5px] font-bold">
+                  <span className="grid min-w-5 h-5 place-items-center rounded-full bg-ink/[0.08] px-1 text-[10.5px] font-bold text-ink/60">
                     {count}
                   </span>
                 )}
@@ -480,17 +504,21 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
         </div>
         {reactionError && <p className="mt-3 text-center text-[12.5px] text-blush" role="alert">{reactionError}</p>}
 
-        <div className="mt-5 border-t border-ink/8 pt-5">
+        <div className="mt-4 border-t border-ink/[0.08] pt-4">
           {!replySent ? (
             replyOpen ? (
-              <div className="space-y-3">
+              <div className="space-y-3" aria-label="Reply to this card">
+                <div className="flex items-center gap-2">
+                  <span className="grid h-7 w-7 place-items-center rounded-full bg-blush/10 text-sm" aria-hidden>✍️</span>
+                  <p className="text-[13px] font-semibold text-ink">Write {data.senderName} back</p>
+                </div>
                 <input
                   value={replyName}
                   onChange={(e) => setReplyName(e.target.value)}
                   placeholder="Your name"
                   aria-label="Your name"
                   maxLength={40}
-                  className="w-full rounded-full border border-ink/12 bg-paper px-4 py-2.5 text-[13.5px] focus:outline-none focus:ring-2 focus:ring-jade/30"
+                  className="w-full rounded-xl border border-ink/12 bg-white px-4 py-2.5 text-[13.5px] focus:outline-none focus:ring-2 focus:ring-jade/30"
                 />
                 <div className="relative">
                   <textarea
@@ -499,7 +527,7 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
                     placeholder={`Say something back to ${data.senderName}...`}
                     aria-label={`Say something back to ${data.senderName}`}
                     rows={3}
-                    className="w-full rounded-2xl border border-ink/12 bg-paper px-4 py-3 text-[13.5px] resize-none focus:outline-none focus:ring-2 focus:ring-jade/30"
+                    className="w-full rounded-2xl border border-ink/12 bg-white px-4 py-3 text-[13.5px] resize-none focus:outline-none focus:ring-2 focus:ring-jade/30"
                   />
                   {replyText.length > 300 && (
                     <span className="absolute bottom-2 right-3 text-[10.5px] tabular-nums text-ink/35">
@@ -513,14 +541,14 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
                 <div className="flex justify-end gap-2">
                   <button
                     onClick={() => setReplyOpen(false)}
-                    className="text-[13px] text-ink/50 px-3 py-2 hover:text-ink"
+                    className="rounded-full px-3 py-2 text-[13px] text-ink/50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-jade/35"
                   >
                     Not now
                   </button>
                   <button
                     onClick={sendReply}
                     disabled={!replyName.trim() || !replyText.trim() || sending}
-                    className="sheen inline-flex items-center gap-1.5 rounded-full bg-jade text-white text-[13px] font-semibold px-5 py-2.5 disabled:opacity-50"
+                    className="sheen inline-flex items-center gap-1.5 rounded-full bg-jade px-5 py-2.5 text-[13px] font-semibold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-jade/35 focus-visible:ring-offset-2"
                   >
                     <Send className="h-3.5 w-3.5" />
                     {sending ? "Sending..." : "Send it back"}
@@ -528,16 +556,16 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col sm:flex-row gap-2.5 justify-center">
+              <div className="flex flex-col gap-2.5 sm:flex-row">
                 <button
                   onClick={() => setReplyOpen(true)}
-                  className="inline-flex justify-center items-center gap-1.5 rounded-full border border-ink/12 bg-paper px-5 py-2.5 text-[13px] font-medium text-ink/75 hover:border-jade/40 hover:text-jade transition-all"
+                  className="inline-flex flex-1 justify-center items-center gap-1.5 rounded-full border border-ink/12 bg-white px-4 py-2.5 text-[13px] font-medium text-ink/75 hover:border-jade/40 hover:text-jade transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-jade/35"
                 >
                   ✍️ Write {data.senderName} a note back
                 </button>
                 <a
                   href={`/create?replyTo=${slug}&to=${encodeURIComponent(data.senderName)}`}
-                  className="inline-flex justify-center items-center gap-1.5 rounded-full bg-ink text-white px-5 py-2.5 text-[13px] font-semibold hover:bg-ink/85 transition-colors"
+                  className="inline-flex flex-1 justify-center items-center gap-1.5 rounded-full bg-ink px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-ink/85 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/35 focus-visible:ring-offset-2"
                 >
                   🐼 Send {data.senderName} a card back
                 </a>
@@ -547,14 +575,14 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
             <motion.p
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="text-center text-[13.5px] font-medium text-jade py-2"
+              className="rounded-2xl bg-jade/[0.08] px-4 py-3 text-center text-[13px] font-medium text-jade"
             >
-              Sent. {data.senderName} will see it, and probably read it four times.
+              Sent. {data.senderName} will find your note with this card.
             </motion.p>
           )}
         </div>
 
-        <div className="mt-5 pt-4 border-t border-ink/8 flex justify-center">
+        <div className="mt-4 flex justify-center">
           <button
             onClick={onReplay}
             className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink/45 hover:text-jade transition-colors"

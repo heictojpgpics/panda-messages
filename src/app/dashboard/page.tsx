@@ -12,6 +12,7 @@ import { occasionLabel } from "@/data/occasions";
 import { getTheme } from "@/data/themes";
 import { EnvelopeChip } from "@/components/brand/Envelope";
 import { toast } from "sonner";
+import { readEditToken, useCardMemoryStore } from "@/stores/card-memory";
 import {
   Send, LogOut, Copy, X, Radio, Inbox, Clock, Check, Sparkles,
   Eye, Heart, MessageCircle, Ban, Plus, ExternalLink, Pencil,
@@ -161,9 +162,7 @@ function Dashboard() {
   // A finished checkout means the wizard's local draft has done its job.
   useEffect(() => {
     if (params.get("paid") === "1") {
-      try {
-        localStorage.removeItem("panda-draft-v2");
-      } catch {}
+      useCardMemoryStore.getState().clearDraft("active");
     }
   }, [params]);
 
@@ -334,11 +333,10 @@ function CardRow({ card, onChange }: { card: DashCard; onChange: () => void }) {
   const cancel = async () => {
     setCancelling(true);
     try {
-      const tokens = JSON.parse(localStorage.getItem("panda-edit-tokens") ?? "{}");
       const res = await fetch(`/api/cards/${card.slug}/cancel`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ editToken: tokens[card.slug] }),
+        body: JSON.stringify({ editToken: readEditToken(card.slug) }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -468,8 +466,7 @@ function WatchPanel({ card, onDone }: { card: DashCard; onDone: () => void }) {
   const esRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
-    const tokens = JSON.parse(localStorage.getItem("panda-edit-tokens") ?? "{}");
-    const token = tokens[card.slug];
+    const token = readEditToken(card.slug);
     const url = `/api/cards/${card.slug}/events${token ? `?editToken=${token}` : ""}`;
     const es = new EventSource(url);
     esRef.current = es;

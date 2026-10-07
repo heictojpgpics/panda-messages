@@ -24,9 +24,9 @@ import { Envelope } from "@/components/brand/Envelope";
 import { AuthPanel } from "@/components/auth/AuthPanel";
 import { getTheme } from "@/data/themes";
 import { toast } from "sonner";
+import { readDraftMemory, readEditToken, useCardMemoryStore } from "@/stores/card-memory";
 
-const DRAFT_KEY = "panda-draft-v2";
-const TOKENS_KEY = "panda-edit-tokens";
+const DRAFT_MEMORY_KEY = "active";
 
 interface Draft {
   occasion: string;
@@ -50,10 +50,7 @@ export function Wizard() {
 
   const initial = useMemo<Draft>(() => {
     // A refresh mid-flow should never cost anyone their words.
-    let saved: Partial<Draft> = {};
-    try {
-      saved = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? "{}");
-    } catch {}
+    const saved: Partial<Draft> = readDraftMemory(DRAFT_MEMORY_KEY);
     const occasion = params.get("occasion") ?? saved.occasion ?? "";
     const custom = params.get("custom") ?? saved.customOccasion ?? "";
     const replyTo = params.get("replyTo");
@@ -76,6 +73,9 @@ export function Wizard() {
 
   const [step, setStep] = useState(() => {
     if (editSlug) return 3;
+    if (typeof initial.step === "number" && initial.step >= 0 && initial.step <= 3) {
+      return initial.step;
+    }
     if (initial.occasion && initial.recipientName && initial.message) return 2;
     if (initial.occasion && initial.recipientName) return 1;
     return 0;
@@ -100,13 +100,14 @@ export function Wizard() {
   const [showAuthGate, setShowAuthGate] = useState(false);
   const [freeCardSlug, setFreeCardSlug] = useState<string | null>(null);
   const [freeShare, setFreeShare] = useState(false);
+  const saveDraftMemory = useCardMemoryStore((state) => state.saveDraft);
+  const clearDraftMemory = useCardMemoryStore((state) => state.clearDraft);
+  const rememberEditToken = useCardMemoryStore((state) => state.rememberEditToken);
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => {
     setDraft((d) => {
       const next = { ...d, [key]: value, step: key === "step" ? (value as number) : d.step };
-      try {
-        localStorage.setItem(DRAFT_KEY, JSON.stringify(next));
-      } catch {}
+      saveDraftMemory(DRAFT_MEMORY_KEY, next);
       return next;
     });
   };
@@ -122,14 +123,7 @@ export function Wizard() {
   useEffect(() => {
     if (!editSlug) return;
     let cancelled = false;
-    const tokens = (() => {
-      try {
-        return JSON.parse(localStorage.getItem(TOKENS_KEY) ?? "{}");
-      } catch {
-        return {};
-      }
-    })();
-    const editToken = tokens[editSlug];
+    const editToken = readEditToken(editSlug);
     fetch(`/api/cards?slug=${editSlug}${editToken ? `&editToken=${encodeURIComponent(editToken)}` : ""}`)
       .then(async (r) => {
         if (!r.ok) throw new Error("not yours");
@@ -177,12 +171,7 @@ export function Wizard() {
 
   // ---------- persistence helpers ----------
   const saveEditToken = (slug: string, token: string, cardId?: string) => {
-    try {
-      const map = JSON.parse(localStorage.getItem(TOKENS_KEY) ?? "{}");
-      map[slug] = token;
-      if (cardId) map[cardId] = token;
-      localStorage.setItem(TOKENS_KEY, JSON.stringify(map));
-    } catch {}
+    rememberEditToken(token, slug, cardId ?? "");
   };
 
   // ---------- actions ----------
@@ -211,9 +200,7 @@ export function Wizard() {
         return false;
       }
       toast("Saved. Panda resealed the envelope.");
-      try {
-        localStorage.removeItem(DRAFT_KEY);
-      } catch {}
+      clearDraftMemory(DRAFT_MEMORY_KEY);
       router.push(`/dashboard?watch=${editingCard.slug}`);
       return true;
     } catch {
@@ -320,9 +307,7 @@ export function Wizard() {
       }).catch(() => {});
       setFreeCardSlug(card.slug);
       setFreeShare(true);
-      try {
-        localStorage.removeItem(DRAFT_KEY);
-      } catch {}
+      clearDraftMemory(DRAFT_MEMORY_KEY);
     } finally {
       setBusy(false);
     }

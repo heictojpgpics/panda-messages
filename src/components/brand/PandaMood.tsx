@@ -18,15 +18,35 @@ const MOODS = {
   birthday: "/panda/theme-birthday-panda.webp",
   moonlit: "/panda/theme-moonlit-panda.webp",
   rose: "/panda/theme-rose-panda.webp",
+  bamboo: "/panda/theme-bamboo-panda.webp",
+  flowers: "/panda/theme-flowers-panda.webp",
+  stargazer: "/panda/theme-stargazer-panda.webp",
+  velvet: "/panda/theme-velvet-panda.webp",
+  sun: "/panda/theme-sun-panda.webp",
+  winter: "/panda/theme-winter-panda.webp",
+  autumn: "/panda/theme-autumn-panda.webp",
+  confetti: "/panda/theme-confetti-panda.webp",
+  sea: "/panda/theme-sea-panda.webp",
+  lantern: "/panda/theme-lantern-panda.webp",
 } as const;
 
 export type PandaMood = keyof typeof MOODS;
 
 /** Match the hero on a card to its wrapping without making every theme noisy. */
 export function pandaMoodForTheme(themeId: string): PandaMood {
-  if (themeId === "birthday-bash" || themeId === "confetti-pop") return "birthday";
-  if (themeId === "moonlit-garden" || themeId === "night-market" || themeId === "long-distance") return "moonlit";
-  if (themeId === "rose-garden" || themeId === "berry-kiss" || themeId === "pressed-flowers") return "rose";
+  if (themeId === "bamboo-grove") return "bamboo";
+  if (themeId === "pressed-flowers") return "flowers";
+  if (themeId === "rose-garden" || themeId === "berry-kiss") return "rose";
+  if (themeId === "long-distance") return "moonlit";
+  if (themeId === "moonlit-garden") return "stargazer";
+  if (themeId === "midnight-velvet") return "velvet";
+  if (themeId === "golden-hour") return "sun";
+  if (themeId === "winter-wonderland") return "winter";
+  if (themeId === "autumn-leaves") return "autumn";
+  if (themeId === "birthday-bash") return "birthday";
+  if (themeId === "confetti-pop") return "confetti";
+  if (themeId === "sea-glass") return "sea";
+  if (themeId === "night-market") return "lantern";
   return "heart";
 }
 

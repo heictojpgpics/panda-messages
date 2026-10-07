@@ -4,11 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { Mascot } from "page-mascot";
 import { OCCASIONS } from "@/data/occasions";
 import { cn } from "@/lib/utils";
 import { Sparkles, PencilLine, ChevronDown } from "lucide-react";
 import { PhoneMock, MiniCard } from "@/components/brand/MiniCard";
+import { PandaMoodFace, type PandaMood } from "@/components/brand/PandaMood";
 
 const EXAMPLES = [
   {
@@ -73,6 +73,8 @@ const EXAMPLES = [
   },
 ];
 
+const HERO_PORTRAITS: PandaMood[] = ["bamboo", "flowers", "sun", "confetti", "lantern"];
+
 function ExampleCarousel() {
   const [i, setI] = useState(0);
   const reduce = useReducedMotion();
@@ -120,6 +122,7 @@ export function Hero() {
   const [tab, setTab] = useState<"any" | "special">("any");
   const [expanded, setExpanded] = useState(false);
   const [custom, setCustom] = useState("");
+  const [portrait, setPortrait] = useState(0);
 
   const list = useMemo(() => {
     const base = OCCASIONS.filter((o) => o.category === tab);
@@ -139,6 +142,7 @@ export function Hero() {
     const text = custom.trim().slice(0, 60);
     router.push(text ? `/create?custom=${encodeURIComponent(text)}` : "/create");
   };
+  const switchPortrait = () => setPortrait((current) => (current + 1) % HERO_PORTRAITS.length);
 
   return (
     <section className="relative overflow-hidden hero-forest grain">
@@ -170,21 +174,40 @@ export function Hero() {
       </div>
 
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6 pt-28 sm:pt-32 pb-16">
-        {/* Mascot, following the reader's cursor */}
+        {/* A small wardrobe of hand-painted delivery portraits, not a repeated stock mascot. */}
         <div className="flex justify-center mb-2">
-          <motion.div
+          <motion.button
+            type="button"
+            onClick={switchPortrait}
+            aria-label="Give Panda a different outfit"
+            title="Panda packed a few outfits. Tap to see one."
             initial={{ opacity: 0, y: -12, scale: 0.8 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ delay: 0.15, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            whileTap={{ scale: 0.94, rotate: -3 }}
+            className="group relative rounded-full p-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-jade/55 focus-visible:ring-offset-4"
           >
-            <Mascot
-              directions="/mascots/panda-directions.webp"
-              reactions="/mascots/panda-reactions.webp"
-              size={126}
-              label="Panda, your card deliverer"
-              className="drop-shadow-[0_10px_24px_rgba(22,36,28,0.25)]"
-            />
-          </motion.div>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.span
+                key={HERO_PORTRAITS[portrait]}
+                initial={{ opacity: 0, scale: 0.78, rotate: -6 }}
+                animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                exit={{ opacity: 0, scale: 0.84, rotate: 6 }}
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                className="block"
+              >
+                <PandaMoodFace
+                  mood={HERO_PORTRAITS[portrait]}
+                  size={126}
+                  alt="Panda, your card deliverer"
+                  className="drop-shadow-[0_10px_24px_rgba(22,36,28,0.25)]"
+                />
+              </motion.span>
+            </AnimatePresence>
+            <span className="pointer-events-none absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-ink/80 px-2.5 py-1 text-[10px] font-medium text-white opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+              new outfit
+            </span>
+          </motion.button>
         </div>
 
         <div className="grid lg:grid-cols-[1.05fr_0.85fr] gap-12 lg:gap-8 items-center">
