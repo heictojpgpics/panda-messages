@@ -5,6 +5,10 @@
 #   npx opennextjs-cloudflare build
 #   npx wrangler deploy
 #
+# main points at the wrapper that adds the scheduled (cron) handler on top
+# of the OpenNext worker. .open-next/ is produced by the build step above
+# and is not tracked in git.
+#
 # Secrets (never in this file, it is committed):
 #   npx wrangler secret put CLOUDFLARE_ACCOUNT_ID
 #   npx wrangler secret put CLOUDFLARE_API_TOKEN
@@ -16,7 +20,7 @@
 #   (non-secret values may go in [vars] below)
 
 name = "panda-messages"
-main = ".open-next/worker.js"
+main = "worker-entry.ts"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 

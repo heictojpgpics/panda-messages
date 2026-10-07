@@ -85,16 +85,31 @@ npm run start          # node .next/standalone/server.js
 This is the exact path used for the production build check: `npm run build`
 outputs `.next/standalone`, and `npm run start` boots it with plain `node`.
 
-## 4. Cloudflare Workers
+## 4. Cloudflare Workers (verified path)
 
-The repo ships `wrangler.toml` wired for
-[`@opennextjs/cloudflare`](https://opennext.js.org/cloudflare):
+The repo ships everything except the two dev-only packages (they are
+heavy; install them when you want this path):
 
 ```bash
 npm install -D @opennextjs/cloudflare wrangler
-npx opennextjs-cloudflare build
+npx opennextjs-cloudflare build     # produces .open-next/
 npx wrangler deploy
 ```
+
+What is committed for this path:
+
+- `open-next.config.ts` — the adapter configuration (no imports, so a
+  plain clone still typechecks without the adapter installed).
+- `worker-entry.ts` — the worker entry. It wraps the generated
+  `.open-next/worker.js` and adds a `scheduled` handler, which the
+  OpenNext worker does not ship: the Cron Trigger calls the delivery
+  engine in-process on `/api/cron/deliveries` with `CRON_SECRET`.
+- `wrangler.toml` — entry, `nodejs_compat`, the ASSETS binding,
+  non-secret vars, the cron trigger, observability.
+
+`npx wrangler deploy --dry-run` compiles the whole worker locally and is
+a free sanity check before the real deploy (the bundle is about 7.6MB
+raw, 1.6MB gzipped).
 
 Secrets never go in the committed file:
 
@@ -110,14 +125,12 @@ npx wrangler secret put CRON_SECRET
 
 Notes on Workers:
 
-- The app talks to D1 over the REST API, so it needs the account id, token
-  and database id as secrets even inside Cloudflare. (A native D1 binding
-  swap later is a contained change in `src/lib/db/d1.ts` only.)
+- The app talks to D1 over the REST API, so it needs the account id,
+  token and database id as secrets even inside Cloudflare. (A native D1
+  binding swap later is a contained change in `src/lib/db/d1.ts` only.)
 - The local SQLite driver is imported lazily inside `src/lib/db/sqlite.ts`
-  and never loads in D1 mode, so the Node-only dependencies stay out of the
-  Workers runtime path.
-- `wrangler.toml` already has a `nodejs_compat` flag, static assets binding
-  and a Cron Trigger (see below).
+  and never loads in D1 mode, so `better-sqlite3` stays out of the
+  Workers runtime path (the build above proves it).
 
 ### Cron Trigger for deliveries
 
@@ -129,15 +142,15 @@ GET /api/cron/deliveries
 Authorization: Bearer $CRON_SECRET
 ```
 
-- **Cloudflare Cron Triggers**: `wrangler.toml` contains
-  `[triggers] crons = ["* * * * *"]`. Route the `scheduled` event to the
-  endpoint above (a fetch to your public URL with the header), or remove
-  that block and use an external scheduler.
-- **External cron** (cron-job.org, GitHub Actions, Upstash QStash): hit the
-  endpoint above every minute (or every five; the engine catches up).
+- **Cloudflare Cron Triggers**: wired up already. `wrangler.toml` has
+  `[triggers] crons = ["* * * * *"]` and `worker-entry.ts` routes the
+  scheduled event into the engine. Nothing to do.
+- **External cron** (cron-job.org, GitHub Actions, Upstash QStash): hit
+  the endpoint above every minute (or every five; the engine catches
+  up). Remove the `[triggers]` block if you go this way.
 - **No scheduler at all**: every page load nudges the engine
-  opportunistically, so low-traffic deployments still deliver on time when
-  anyone (including the sender's open dashboard tab) is around.
+  opportunistically, so low-traffic deployments still deliver on time
+  when anyone (including the sender's open dashboard tab) is around.
 
 ## 5. Email with Resend
 
