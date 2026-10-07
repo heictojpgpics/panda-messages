@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Envelope } from "@/components/brand/Envelope";
-import { PandaMoodFace } from "@/components/brand/PandaMood";
+import { PandaMoodFace, pandaMoodForTheme } from "@/components/brand/PandaMood";
 import { getTheme, type Theme } from "@/data/themes";
 import { REACTION_KINDS } from "@/data/signoffs";
 import { cn } from "@/lib/utils";
@@ -150,7 +150,7 @@ export function CardScene({
               <p className="mt-1.5 text-[13px] text-ink/50">
                 from {data.senderName} · tap the envelope to open
               </p>
-              <span className="mt-5 inline-flex items-center gap-2 rounded-full bg-ink/90 text-white/90 text-[12.5px] font-medium px-5 py-2.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="mt-5 inline-flex items-center gap-2 rounded-full bg-ink/90 text-white/90 text-[12.5px] font-medium px-5 py-2.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                 open it <Heart className="h-3.5 w-3.5 text-blush fill-blush" />
               </span>
             </div>
@@ -242,7 +242,7 @@ function TheCard({ data, theme, mode }: { data: CardSceneData; theme: Theme; mod
         transition={{ delay: 0.35, type: "spring", stiffness: 120, damping: 12 }}
         className="relative"
       >
-        <PandaMoodFace mood="heart" size={110} className="drop-shadow-md" />
+        <PandaMoodFace mood={pandaMoodForTheme(theme.id)} size={110} className="drop-shadow-md" />
       </motion.div>
 
       <motion.div
@@ -363,20 +363,42 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
   const [replySent, setReplySent] = useState(false);
   const [replyError, setReplyError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [reactionError, setReactionError] = useState<string | null>(null);
   const burstId = useRef(0);
 
+  useEffect(() => {
+    let live = true;
+    fetch(`/api/cards/${slug}/reactions`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body) => {
+        if (!live || !body?.counts) return;
+        setReacted(Object.fromEntries(body.counts.map((item: { kind: string; count: number }) => [item.kind, item.count])));
+      })
+      .catch(() => {});
+    return () => { live = false; };
+  }, [slug]);
+
   const react = async (kind: string, emoji: string) => {
-    setReacted((r) => ({ ...r, [kind]: (r[kind] ?? 0) + 1 }));
-    const id = burstId.current++;
-    setBurst((b) => [...b, { id, emoji }]);
-    setTimeout(() => setBurst((b) => b.filter((x) => x.id !== id)), 2400);
+    setReactionError(null);
     try {
-      await fetch(`/api/cards/${slug}/reactions`, {
+      const res = await fetch(`/api/cards/${slug}/reactions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ kind }),
       });
-    } catch {}
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setReactionError(body.error ?? "That reaction did not make it through. Try again.");
+        return;
+      }
+      if (!body.fresh) return;
+      setReacted((r) => ({ ...r, [kind]: (r[kind] ?? 0) + 1 }));
+      const id = burstId.current++;
+      setBurst((b) => [...b, { id, emoji }]);
+      setTimeout(() => setBurst((b) => b.filter((x) => x.id !== id)), 2400);
+    } catch {
+      setReactionError("The connection hiccuped. Try once more?");
+    }
   };
 
   const sendReply = async () => {
@@ -456,6 +478,7 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
             );
           })}
         </div>
+        {reactionError && <p className="mt-3 text-center text-[12.5px] text-blush" role="alert">{reactionError}</p>}
 
         <div className="mt-5 border-t border-ink/8 pt-5">
           {!replySent ? (

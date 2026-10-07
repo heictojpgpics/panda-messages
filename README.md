@@ -3,7 +3,7 @@
 A personal card, made in a minute, delivered like a gift on the morning you pick.
 
 Panda Messages is a production-grade alternative to kitty-card services: you pick an occasion,
-write your words (or let Panda write them), attach a song and photos, choose from 11 themes, and
+write your words (or let Panda write them), attach a song and photos, choose from 14 themes, and
 either share the link yourself for free or have Panda deliver it to their inbox for $4.99, once,
 on the day you choose. The recipient opens an envelope, the card rises out, and the sender
 watches the whole thing happen live.
@@ -19,9 +19,9 @@ watches the whole thing happen live.
 **For the sender**
 - A 4-step card wizard: occasion → names → words/wrapping → delivery, with a live preview,
   message seeds in Panda's voice, YouTube song attach, up to 5 photos (compressed client-side),
-  and 11 themes
+  and 14 themes
 - Free path: watermark card, self-share link, needs a free account
-- Paid path ($4.99): no watermark, all themes, song, photos, scheduled email delivery,
+- Paid path ($4.99): no watermark, all 14 themes, song, photos, scheduled email delivery,
   edit/cancel before send with full refund
 - A dashboard with live watching: delivery, open, reaction and reply events stream in over SSE
 

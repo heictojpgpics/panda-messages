@@ -176,6 +176,48 @@ export const THEMES: Theme[] = [
       texture: "confetti",
     },
   },
+  {
+    id: "sea-glass",
+    name: "Sea Glass",
+    blurb: "Cool water, clear skies, and a note that feels like a deep breath.",
+    colors: {
+      envelope: "#9ACEC8",
+      flap: "#65ACA8",
+      page: "#E7F6F4",
+      seal: "#267B78",
+      paper: "#FBFFFE",
+      heading: "#256B68",
+      texture: "stars",
+    },
+  },
+  {
+    id: "berry-kiss",
+    name: "Berry Kiss",
+    blurb: "Raspberry, rose, and just enough shimmer for a proper love note.",
+    colors: {
+      envelope: "#B7365B",
+      flap: "#86203F",
+      page: "#FCECF1",
+      seal: "#E6AD56",
+      paper: "#FFFDFD",
+      heading: "#8B2143",
+      texture: "roses",
+    },
+  },
+  {
+    id: "night-market",
+    name: "Night Market",
+    blurb: "Ink blue, lantern gold, and a little bit of after-dark magic.",
+    colors: {
+      envelope: "#18335F",
+      flap: "#0E2244",
+      page: "#EEF2FB",
+      seal: "#D7A637",
+      paper: "#FEFEFF",
+      heading: "#274E8F",
+      texture: "moon",
+    },
+  },
 ];
 
 export const FREE_THEMES = ["bamboo-grove"];

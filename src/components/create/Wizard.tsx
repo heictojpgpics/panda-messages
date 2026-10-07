@@ -8,6 +8,7 @@ import { THEMES, FREE_THEMES } from "@/data/themes";
 import { MESSAGE_SEEDS } from "@/data/messages";
 import { defaultSignoff } from "@/data/signoffs";
 import { MiniCard } from "@/components/brand/MiniCard";
+import { EnvelopeChip } from "@/components/brand/Envelope";
 import { cn } from "@/lib/utils";
 import { compressPhoto, extractYouTubeId, PHOTO_LIMITS } from "@/lib/photo";
 import {
@@ -175,10 +176,11 @@ export function Wizard() {
   };
 
   // ---------- persistence helpers ----------
-  const saveEditToken = (slug: string, token: string) => {
+  const saveEditToken = (slug: string, token: string, cardId?: string) => {
     try {
       const map = JSON.parse(localStorage.getItem(TOKENS_KEY) ?? "{}");
       map[slug] = token;
+      if (cardId) map[cardId] = token;
       localStorage.setItem(TOKENS_KEY, JSON.stringify(map));
     } catch {}
   };
@@ -310,7 +312,7 @@ export function Wizard() {
     try {
       const card = await createCard();
       if (!card) return;
-      if (card.editToken) saveEditToken(card.slug, card.editToken);
+      if (card.editToken) saveEditToken(card.slug, card.editToken, card.id);
       await fetch(`/api/cards/${card.slug}/finalize-free`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -347,7 +349,7 @@ export function Wizard() {
     try {
       const card = await createCard();
       if (!card) return;
-      if (card.editToken) saveEditToken(card.slug, card.editToken);
+      if (card.editToken) saveEditToken(card.slug, card.editToken, card.id);
       await startCheckout(card.id, card.slug, card.editToken);
     } finally {
       setBusy(false);
@@ -927,11 +929,7 @@ function MessageStep({
                     <Lock className="h-2.5 w-2.5" />
                   </span>
                 )}
-                <span
-                  className="h-9 w-12 rounded-md"
-                  style={{ background: `linear-gradient(140deg, ${t.colors.envelope}, ${t.colors.flap})` }}
-                  aria-hidden
-                />
+                <EnvelopeChip theme={t} size={48} />
                 <span className="text-[9.5px] font-medium text-ink/70 leading-none text-center">{t.name.split(" ")[0]}</span>
               </button>
             );

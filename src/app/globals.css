@@ -147,6 +147,10 @@
   ::selection {
     background: color-mix(in srgb, var(--jade) 25%, transparent);
   }
+  :focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--jade) 62%, white);
+    outline-offset: 3px;
+  }
 }
 
 /* ---------- Brand utilities ---------- */
@@ -333,10 +337,25 @@
   background-size: 100% 1px;
 }
 
+@media (hover: none) {
+  .card-lift:hover {
+    transform: none;
+    box-shadow:
+      0 1px 2px rgba(22, 36, 28, 0.04),
+      0 6px 16px -6px rgba(22, 36, 28, 0.10),
+      0 24px 48px -24px rgba(22, 36, 28, 0.22);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .float-soft, .float-soft-2, .drift-piece, .marquee-track, .spin-slow, .live-dot {
     animation: none !important;
   }
   .sheen::after { display: none; }
   html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }

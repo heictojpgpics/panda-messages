@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { getTheme } from "@/data/themes";
 import { occasionLabel } from "@/data/occasions";
-import { PandaHalo } from "./PandaMood";
+import { PandaHalo, pandaMoodForTheme } from "./PandaMood";
 
 /**
  * The card face. One visual language everywhere it appears: the landing
@@ -56,7 +56,7 @@ export function MiniCard({
       </p>
 
       {/* Panda */}
-      <PandaHalo mood="center" size={compact ? 64 : 84} />
+      <PandaHalo mood={pandaMoodForTheme(theme.id)} size={compact ? 64 : 84} />
 
       {/* Dear name */}
       <div

@@ -15,9 +15,20 @@ const MOODS = {
   right: "/panda/d-right.webp",
   up: "/panda/d-up.webp",
   down: "/panda/d-down.webp",
+  birthday: "/panda/theme-birthday-panda.webp",
+  moonlit: "/panda/theme-moonlit-panda.webp",
+  rose: "/panda/theme-rose-panda.webp",
 } as const;
 
 export type PandaMood = keyof typeof MOODS;
+
+/** Match the hero on a card to its wrapping without making every theme noisy. */
+export function pandaMoodForTheme(themeId: string): PandaMood {
+  if (themeId === "birthday-bash" || themeId === "confetti-pop") return "birthday";
+  if (themeId === "moonlit-garden" || themeId === "night-market" || themeId === "long-distance") return "moonlit";
+  if (themeId === "rose-garden" || themeId === "berry-kiss" || themeId === "pressed-flowers") return "rose";
+  return "heart";
+}
 
 /** Static panda portraits extracted from the mascot sprite sheets. */
 export function PandaMoodFace({

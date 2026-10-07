@@ -71,7 +71,7 @@ export default function AboutPage() {
             </p>
             <p className="mt-4 text-[14.5px] text-ink-soft leading-[1.8]">
               Making one is free, with a small pandamessages.com line on the card. The full card
-              is $4.99, once, with no subscription: no mark on the card, all eleven themes, up
+              is $4.99, once, with no subscription: no mark on the card, all fourteen themes, up
               to five photos, their song, and Panda can deliver it to their inbox on the morning
               of the day you pick. You watch the moment it is opened, and they can replay it
               forever.
