@@ -1,4 +1,4 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# See https://help.github.com/articles/ignoring-files/ for more information.
 
 # dependencies
 node_modules
@@ -30,42 +30,39 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files (never commit real ones)
 .env*
+!.env.example
 
 # vercel
 .vercel
 
-
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local state
 local-*
 .claude
 .z-ai-config
 *.log
-dev.log
-dev.out.log
-test
-prompt
 
-server.log
-# Skills directory
-/skills/
-# secrets and local state
+# secrets
 .env
 .env.local
 .env*.local
 
-# local database
-db/
+# local database (the SQLite file lives here; src/lib/db is source code)
+/db/
 *.db
 *.db-shm
 *.db-wal
 
 # sandbox/dev artifacts
 dev.log
+dev.out.log
 server.log
+/skills/
 .zscripts/
 clawhub/
 tmp-research/
@@ -78,3 +75,7 @@ tests/
 Caddyfile
 agent-ctx/
 prisma/
+audit/
+download/
+test
+prompt
