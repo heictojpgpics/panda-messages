@@ -505,7 +505,7 @@ export function Envelope({
             transition={
               rising
                 ? {
-                    duration: 0.95 * pace,
+                    duration: 1.01 * pace,
                     times: [0, 0.5, 0.84, 1],
                     ease: ["easeIn", "easeOut", [0.22, 1, 0.36, 1]] as const,
                     delay: letterDelay * pace,
@@ -640,7 +640,7 @@ export function Envelope({
             }}
             transition={
               unfolding
-                ? { duration: 0.74 * pace, times: [0, 0.45, 1], ease: "easeOut" }
+                ? { duration: 0.88 * pace, times: [0, 0.45, 1], ease: "easeOut" }
                 : { duration: 0.3 * pace, ease: "easeOut" }
             }
             style={{
@@ -689,14 +689,14 @@ export function Envelope({
               transition={
                 unfolding
                   ? {
-                      duration: 0.74 * pace,
+                      duration: 0.88 * pace,
                       times: [0, 0.16, 1],
                       ease: ["easeOut", flapRelease] as const,
                     }
                   : opened
                     ? { duration: 0.4 * pace, ease: "easeOut" }
                     : cracking
-                      ? { duration: 0.42 * pace, ease: "easeOut" }
+                      ? { duration: 0.48 * pace, ease: "easeOut" }
                       : { duration: 0.4 * pace, ease: "easeOut" }
               }
               onAnimationComplete={() => {
@@ -796,7 +796,7 @@ export function Envelope({
                 }}
                 transition={
                   unfolding
-                    ? { duration: 0.74 * pace, times: [0, 0.5, 0.62, 1], ease: "easeOut" }
+                    ? { duration: 0.88 * pace, times: [0, 0.5, 0.62, 1], ease: "easeOut" }
                     : { duration: 0.3 * pace, ease: "easeOut" }
                 }
               >
@@ -825,7 +825,7 @@ export function Envelope({
                 }}
                 transition={
                   unfolding
-                    ? { duration: 0.74 * pace, times: [0, 0.55, 0.82, 1], ease: "easeOut" }
+                    ? { duration: 0.88 * pace, times: [0, 0.55, 0.82, 1], ease: "easeOut" }
                     : { duration: 0.3 * pace, ease: "easeOut" }
                 }
               >

@@ -117,3 +117,17 @@ The landing demo and the wizard's rehearsal get the same chain through an intern
 - `npm run lint`, `tsc --noEmit`, and `npm run build` all pass; zero hydration errors on landing and card pages.
 - Frame-by-frame vision review (10 fps contact sheets) of the fold: real 3D hinge with foreshortening and an edge-on standing moment, attached at the crease throughout, no gap, no 2D flip artifact, dynamic shading visible frame to frame, shade overlays confined to the flap shape. Fold realism scored 9/10; the full opening received a SHIP verdict.
 - Regression checks: landing demo close and reopen on scroll, wizard rehearsal end to end, mobile at 390px, sealed and final states, and the handoff crossfade inspected at full resolution (no empty beat).
+
+## 2026-10-07 Opening pace: a third of a second more air
+
+The opening read as quick. A recipient taps the seal and, two and two thirds seconds later, holds a card; every beat was there but none of them lingered. The whole sequence now takes a beat under three seconds, with the extra third of a second spent where the eyes are: the fold.
+
+Stage windows: the tap's press hold 230ms (was 200), the wax tear 550ms (was 480), the flap's fold 880ms (was 740), the letter's climb 1060ms (was 1000), the held breath unchanged at 240ms. Every duration inside the envelope stretches with its window in lockstep: the fold's rotation, its traveling shade, both liner shade overlays, the crack lift, and the letter's climb (1.01s after its 50ms wait), so nothing drifts out of sync or finishes early into dead air.
+
+The landing demo and wizard rehearsal inherit the same pacing through the shared fold-and-climb chain. Reduced motion keeps scaling every number by the same single factor.
+
+### Verification
+
+- `npm run lint`, `tsc --noEmit`, and `npm run build` all pass.
+- Frame-by-frame vision review of a 30fps capture: seal cracks at 230ms exactly, fold swings visibly for the full window and settles at 1660ms, letter peaks at 2720ms, card hands off at 2960ms. The flap stays attached at the crease in every frame with no gaps or artifacts, the liner reveals as the panel passes vertical, and the seal clears before the fold begins.
+- Landing demo scroll-trigger still opens to the settled pose with the flap resting behind the pocket.

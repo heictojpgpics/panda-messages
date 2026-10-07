@@ -43,10 +43,10 @@ export interface CardSceneData {
 type Phase = "arrived" | "pressing" | "cracking" | "unfolding" | "rising" | "lifted" | "card";
 
 const STAGE_MS: Record<Exclude<Phase, "arrived">, number> = {
-  pressing: 200,
-  cracking: 480,
-  unfolding: 740,
-  rising: 1000,
+  pressing: 230,
+  cracking: 550,
+  unfolding: 880,
+  rising: 1060,
   lifted: 240,
   /** zero: the handoff rides on the tail of the lifted hold */
   card: 0,
