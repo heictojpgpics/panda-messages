@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import type { Theme } from "@/data/themes";
 
@@ -31,19 +31,32 @@ interface EnvelopeProps {
   theme: Theme;
   /** 0 = closed, 1 = flap open, card peeking. Progress is animated. */
   open: boolean;
+  /** Separates the seal break from the letter reveal so the moment can breathe. */
+  stage?: "sealed" | "unsealing" | "opening";
   className?: string;
   width?: number;
   children?: React.ReactNode;
 }
 
-export function Envelope({ theme, open, className, width = 320, children }: EnvelopeProps) {
+export function Envelope({ theme, open, stage, className, width = 320, children }: EnvelopeProps) {
   const height = width * 0.62;
+  const revealStage = stage ?? (open ? "opening" : "sealed");
+  const unsealing = revealStage === "unsealing";
+  const opening = revealStage === "opening";
   return (
     <div
       className={cn("relative select-none", className)}
       style={{ width, height, perspective: width * 2 }}
       aria-hidden
     >
+      <motion.div
+        aria-hidden
+        className="absolute -inset-[13%] rounded-full blur-3xl"
+        initial={false}
+        animate={{ opacity: opening ? 0.6 : unsealing ? 0.32 : 0.12, scale: opening ? 1.08 : 0.9 }}
+        transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+        style={{ background: `radial-gradient(circle, ${theme.colors.seal}46, transparent 68%)` }}
+      />
       {/* Envelope back */}
       <div
         className="absolute inset-0 rounded-xl shadow-[0_18px_50px_-18px_rgba(22,36,28,0.45)]"
@@ -82,12 +95,12 @@ export function Envelope({ theme, open, className, width = 320, children }: Enve
         <path d="M0 0 L160 104 L320 0" fill="none" />
       </svg>
 
-      {/* The card tucked inside, visible when open */}
+      {/* The letter is deliberately held back until the seal has given way. */}
       <motion.div
         className="absolute left-1/2 z-10"
         style={{ width: width * 0.86, height: height * 1.35, x: "-50%", bottom: "10%", background: theme.colors.paper, borderRadius: 10, boxShadow: "0 -8px 30px -10px rgba(22,36,28,0.35)" }}
-        animate={open ? { y: -height * 0.72, rotate: -2 } : { y: 4, rotate: 0 }}
-        transition={{ type: "spring", stiffness: 120, damping: 16, delay: open ? 0.18 : 0 }}
+        animate={opening ? { y: -height * 0.84, rotate: -1.6, scale: 1.015 } : { y: 7, rotate: 0, scale: 0.985 }}
+        transition={{ type: "spring", stiffness: 105, damping: 17, delay: opening ? 0.08 : 0 }}
       >
         <div className="h-full w-full rounded-[10px] border border-black/5 flex flex-col items-center justify-start pt-3 gap-1.5" style={{ background: theme.colors.paper }}>
           <span className="h-1.5 w-8 rounded-full" style={{ background: theme.colors.heading, opacity: 0.5 }} />
@@ -101,8 +114,8 @@ export function Envelope({ theme, open, className, width = 320, children }: Enve
       <motion.div
         className="absolute inset-x-0 top-0 origin-top z-20"
         style={{ height: height * 0.62, transformStyle: "preserve-3d" }}
-        animate={open ? { rotateX: 178 } : { rotateX: 0 }}
-        transition={{ type: "spring", stiffness: 90, damping: 15 }}
+        animate={opening ? { rotateX: 178 } : unsealing ? { rotateX: -3 } : { rotateX: 0 }}
+        transition={{ type: "spring", stiffness: 84, damping: 16 }}
       >
         <svg viewBox="0 0 320 124" className="w-full h-full" preserveAspectRatio="none" style={{ filter: "drop-shadow(0 6px 10px rgba(22,36,28,0.18))" }}>
           <path
@@ -115,12 +128,37 @@ export function Envelope({ theme, open, className, width = 320, children }: Enve
         <div style={{ transformStyle: "preserve-3d" }} />
       </motion.div>
 
+      {/* A small seal break, rather than a single disappearing dot. */}
+      <AnimatePresence>
+        {unsealing && (
+          <motion.div
+            className="absolute left-1/2 z-40 pointer-events-none"
+            style={{ top: height * 0.49, x: "-50%" }}
+            initial={{ opacity: 0, scale: 0.65 }}
+            animate={{ opacity: 1, scale: 1.35, rotate: 18 }}
+            exit={{ opacity: 0, scale: 1.9 }}
+            transition={{ duration: 0.42, ease: [0.2, 0.9, 0.3, 1] }}
+            aria-hidden
+          >
+            {Array.from({ length: 8 }).map((_, i) => (
+              <motion.i
+                key={i}
+                className="absolute left-1/2 top-1/2 h-3 w-px origin-bottom rounded-full"
+                style={{ background: theme.colors.seal, rotate: i * 45 }}
+                animate={{ y: [-2, -18], opacity: [0.9, 0] }}
+                transition={{ duration: 0.38, delay: i * 0.015 }}
+              />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Wax seal, pops when opening */}
       <motion.div
         className="absolute left-1/2 z-30"
         style={{ top: height * 0.5, x: "-50%" }}
-        animate={open ? { scale: [1, 1.35, 0.9, 0], opacity: [1, 1, 1, 0], rotate: [0, -14, 8, 20] } : { scale: 1, opacity: 1, rotate: 0 }}
-        transition={{ duration: 0.55, times: [0, 0.3, 0.6, 1] }}
+        animate={opening ? { scale: [1, 1.18, 0.72, 0], opacity: [1, 1, 0.9, 0], rotate: [0, -9, 12, 24] } : unsealing ? { scale: [1, 1.1, 0.98], rotate: [0, -3, 2] } : { scale: 1, opacity: 1, rotate: 0 }}
+        transition={opening ? { duration: 0.48, times: [0, 0.34, 0.68, 1] } : { duration: 0.36 }}
       >
         <EnvelopeSeal theme={theme} size={Math.max(26, width * 0.105)} />
       </motion.div>

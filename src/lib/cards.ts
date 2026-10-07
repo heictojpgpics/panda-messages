@@ -5,6 +5,7 @@ import { newId, newSlug, newToken, sha256Hex, timingSafeEqualStr } from "./ids";
 import { getTheme, FREE_THEMES } from "@/data/themes";
 import type { SessionUser } from "./auth";
 import { siteUrl } from "./config";
+import type { CardPhotoValue } from "./card-photos";
 
 export interface CardDraft {
   senderName: string;
@@ -17,7 +18,7 @@ export interface CardDraft {
   theme: string;
   songId?: string | null;
   songProvider?: string | null;
-  photos?: string[] | null;
+  photos?: CardPhotoValue[] | null;
   replyToCardId?: string | null;
 }
 

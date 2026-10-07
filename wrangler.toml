@@ -29,6 +29,10 @@ compatibility_flags = ["nodejs_compat"]
 directory = ".open-next/assets"
 binding = "ASSETS"
 
+[[r2_buckets]]
+binding = "CARD_PHOTOS"
+bucket_name = "panda-message-photos"
+
 # Non-secret configuration for the worker.
 [vars]
 NEXT_PUBLIC_SITE_URL = "https://panda-messages.heictojpg-pics.workers.dev"

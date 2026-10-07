@@ -46,3 +46,24 @@
 - Production build passes with `NEXT_TURBOPACK_EXPERIMENTAL_USE_SYSTEM_TLS_CERTS=1 npm run build`.
 - Local HTTP checks return `200` for the landing page and every new portrait asset.
 - Read-only live-card API smoke test: a local draft returns `409` from both reaction and reply reads; an already-sent card returns `200` from both endpoints.
+
+## Reveal and keepsake refinement, 2026-10-07
+
+### Findings and changes
+
+- The reveal skipped from a closed envelope to a fully open flap. Rebuilt it as a paced three-beat sequence: seal break, letter lift, and card arrival. The reduced-motion route keeps the same order without excess movement.
+- The reveal now carries a small, deterministic celebration chosen for the occasion first and the wrapping second. Birthday, graduation, new-home, thank-you, get-well, morning, night, and seasonal moments no longer all behave alike.
+- Lifted the delivery header above the reveal layer and added separation below it, preventing the ambient card effects from colliding with the rounded “sent with Panda Messages” pill.
+- Removed the redundant “Your name” reply field. A reply comes from the named recipient on the envelope, and the server sets that author identity itself.
+- Rebalanced the reaction and reply controls for narrow screens. Reactions are compact four-column tactile choices with responsive labels; writing back and sending a return card are two clear, equal actions.
+- Added private R2 photo architecture. New uploads move into a capability-scoped `CARD_PHOTOS` binding and are served through a no-store card proxy. The R2 bucket remains private, the card link is the access capability, drafts stay sealed, and old inline photo data remains readable.
+- Added a deliberate photo layout for one, two, or several keepsakes instead of fixed square thumbnails in a wrapping row.
+- Added six occasion-specific transparent portraits: congratulations, thank you, new home, new baby, good luck, and get well. The collection now has nineteen generated portraits, with occasion portraits taking priority over a generic theme face when appropriate.
+
+### Verification
+
+- Visual asset inspection confirmed all six new portraits have an alpha channel and a clean transparent silhouette.
+- `npm run lint` and `npm run build` pass after the changes.
+- Local HTTP smoke check returns `200` for the landing page. A draft reply read remains protected with `409`.
+- Browser screenshot automation was attempted against the local server but the isolated browser cannot reach the sandbox address. The running app was checked over HTTP, and the animation, z-index, responsive grid, and focus paths were additionally verified in source and production build output.
+- The supplied Cloudflare token authenticates and initialized D1, but Cloudflare rejected R2 operations because that token lacks R2 Object Storage permission. The binding and routes are committed and ready; creating or binding the production bucket requires a token with R2 edit permission.

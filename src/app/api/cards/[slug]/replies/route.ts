@@ -17,16 +17,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     }
 
     const body = await req.json();
-    const authorName = String(body.authorName ?? "").trim();
     const message = String(body.message ?? "").trim();
-    if (!authorName || authorName.length > 40) {
-      return NextResponse.json({ error: "Add your name so they know it is you." }, { status: 400 });
-    }
     if (!message || message.length > 400) {
       return NextResponse.json({ error: "Write a little reply, under 400 characters." }, { status: 400 });
     }
 
-    await addReply(card.id, authorName, message);
+    // The reveal page belongs to the named recipient. Asking them to type
+    // their own name again breaks the moment and lets a forwarded link
+    // misrepresent the reply, so the card's recipient remains the author.
+    await addReply(card.id, card.recipientName, message);
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("reply failed", err);

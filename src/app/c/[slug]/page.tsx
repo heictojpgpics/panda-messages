@@ -7,6 +7,7 @@ import { opportunisticTick } from "@/lib/delivery";
 import { CardSceneClient } from "./CardSceneClient";
 import { CardNotReady } from "./CardNotReady";
 import { PandaMoodFace } from "@/components/brand/PandaMood";
+import { parseCardPhotos } from "@/lib/card-photos";
 
 export const dynamic = "force-dynamic";
 
@@ -88,12 +89,12 @@ export default async function CardPage({ params }: Props) {
       ? "Just because"
       : getOccasion(card.occasion)?.label ?? occasionLabel(card.occasion);
 
-  const photos: string[] = card.photos ? JSON.parse(card.photos) : [];
+  const photos = parseCardPhotos(card.photos);
   const showPhotos = card.plan === "paid" ? photos : [];
 
   return (
     <main className="min-h-screen bg-mist/50 flex flex-col">
-      <header className="w-full py-5 px-4 flex flex-col items-center gap-2">
+      <header className="relative z-30 w-full px-4 pb-2 pt-5 flex flex-col items-center gap-2">
         {card.replyToCardId && (
           <p className="rounded-full bg-jade-soft/70 border border-jade/20 px-4 py-1.5 text-[11.5px] font-semibold text-jade">
             🐼 One of yours, come back around
@@ -106,11 +107,12 @@ export default async function CardPage({ params }: Props) {
           🐼 sent with Panda Messages
         </Link>
       </header>
-      <div className="flex-1 px-2 sm:px-4 pb-8">
+      <div className="relative z-0 flex-1 px-2 pb-8 pt-2 sm:px-4">
         <CardSceneClient
           slug={slug}
           data={{
             occasionLabel: label,
+            occasionId: card.occasion,
             recipientName: card.recipientName,
             senderName: card.senderName,
             message: card.message,
@@ -118,6 +120,7 @@ export default async function CardPage({ params }: Props) {
             theme: card.theme,
             songId: card.plan === "paid" ? card.songId : null,
             photos: showPhotos,
+            photoSlug: slug,
             watermark: card.watermark,
             plan: card.plan === "paid" ? "paid" : "free",
           }}

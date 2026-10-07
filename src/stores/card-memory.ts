@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { CardPhotoValue } from "@/lib/card-photos";
 
 export type ComposerDraftMemory = {
   occasion?: string;
@@ -12,7 +13,7 @@ export type ComposerDraftMemory = {
   signoff?: string;
   theme?: string;
   songInput?: string;
-  photos?: string[];
+  photos?: CardPhotoValue[];
   step?: number;
 };
 

@@ -3,26 +3,29 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Envelope } from "@/components/brand/Envelope";
-import { PandaMoodFace, pandaMoodForTheme } from "@/components/brand/PandaMood";
+import { PandaMoodFace, pandaMoodForCard } from "@/components/brand/PandaMood";
 import { getTheme, type Theme } from "@/data/themes";
 import { REACTION_KINDS } from "@/data/signoffs";
 import { cn } from "@/lib/utils";
+import { cardPhotoUrl, type CardPhotoValue } from "@/lib/card-photos";
 import { Play, RotateCcw, Music, Send, Heart } from "lucide-react";
 
 export interface CardSceneData {
   occasionLabel: string;
+  occasionId?: string;
   recipientName: string;
   senderName: string;
   message: string;
   signoff: string;
   theme: string;
   songId?: string | null;
-  photos?: string[];
+  photos?: CardPhotoValue[];
+  photoSlug?: string;
   watermark: boolean;
   plan: "free" | "paid";
 }
 
-type Phase = "arrived" | "opening" | "card";
+type Phase = "arrived" | "unsealing" | "opening" | "card";
 
 /** Envelope size that fits the viewport, measured after mount so SSR and
  * hydration agree on the first frame. */
@@ -52,6 +55,36 @@ const DRIFT: Record<Theme["colors"]["texture"], { emoji: string; opacity: number
   confetti: [{ emoji: "🎉", opacity: 0.4 }, { emoji: "✨", opacity: 0.45 }],
 };
 
+const REVEAL_MOTIFS: Record<Theme["colors"]["texture"], string[]> = {
+  bamboo: ["💚", "🍃", "✨"],
+  petals: ["🌸", "🌼", "✨"],
+  roses: ["❤️", "🌹", "✨"],
+  stars: ["✨", "⭐", "💫"],
+  moon: ["🌙", "✨", "💌"],
+  velvet: ["✨", "🥂", "⭐"],
+  sun: ["☀️", "✨", "🧡"],
+  snow: ["❄️", "✨", "🤍"],
+  leaves: ["🍁", "✨", "🧡"],
+  candles: ["🎉", "✨", "🎂"],
+  confetti: ["🎉", "✨", "💚"],
+};
+
+const OCCASION_MOTIFS: Record<string, string[]> = {
+  birthday: ["🎂", "🎉", "✨"],
+  anniversary: ["💍", "❤️", "✨"],
+  valentines: ["💘", "🌹", "✨"],
+  christmas: ["🎄", "❄️", "✨"],
+  "new-baby": ["🍼", "🌙", "✨"],
+  graduation: ["🎓", "⭐", "✨"],
+  congratulations: ["🎉", "🥂", "✨"],
+  "new-home": ["🏡", "🗝️", "✨"],
+  "thank-you": ["🌼", "💛", "✨"],
+  "get-well": ["🌼", "💚", "✨"],
+  "good-morning": ["☀️", "✨", "🍃"],
+  "good-night": ["🌙", "⭐", "✨"],
+  "i-miss-you": ["💌", "🌙", "✨"],
+};
+
 export function CardScene({
   data,
   mode = "view",
@@ -67,17 +100,26 @@ export function CardScene({
   const [phase, setPhase] = useState<Phase>("arrived");
   const reduce = useReducedMotion();
   const envelopeWidth = useEnvelopeWidth();
+  const openingTimers = useRef<number[]>([]);
 
   const open = useCallback(() => {
     if (phase !== "arrived") return;
-    setPhase("opening");
     onOpened?.();
-    setTimeout(() => setPhase("card"), reduce ? 200 : 1000);
+    setPhase("unsealing");
+    const pace = reduce ? 0.35 : 1;
+    openingTimers.current.forEach(window.clearTimeout);
+    openingTimers.current = [
+      window.setTimeout(() => setPhase("opening"), 420 * pace),
+      window.setTimeout(() => setPhase("card"), 1520 * pace),
+    ];
   }, [phase, onOpened, reduce]);
 
   const replay = () => {
+    openingTimers.current.forEach(window.clearTimeout);
     setPhase("arrived");
   };
+
+  useEffect(() => () => openingTimers.current.forEach(window.clearTimeout), []);
 
   const drift = DRIFT[theme.colors.texture];
 
@@ -124,6 +166,12 @@ export function CardScene({
         )}
       </AnimatePresence>
 
+      <CelebrateReveal
+        active={phase === "opening"}
+        motif={OCCASION_MOTIFS[data.occasionId ?? ""] ?? REVEAL_MOTIFS[theme.colors.texture]}
+        reduce={Boolean(reduce)}
+      />
+
       <AnimatePresence mode="wait">
         {phase === "arrived" && (
           <motion.button
@@ -168,14 +216,28 @@ export function CardScene({
           </motion.button>
         )}
 
-        {phase === "opening" && (
+        {(phase === "unsealing" || phase === "opening") && (
           <motion.div
             key="opening"
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.94, y: -18 }}
+            transition={{ duration: reduce ? 0.16 : 0.32 }}
             className="relative z-10"
           >
-            <Envelope theme={theme} open={true} width={envelopeWidth} />
+            <Envelope
+              theme={theme}
+              open={phase === "opening"}
+              stage={phase === "unsealing" ? "unsealing" : "opening"}
+              width={envelopeWidth}
+            />
+            <motion.p
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: phase === "unsealing" ? 1 : 0, y: 0 }}
+              className="mt-7 text-center text-[12.5px] font-medium text-ink/55"
+            >
+              breaking the seal...
+            </motion.p>
           </motion.div>
         )}
 
@@ -204,6 +266,39 @@ export function CardScene({
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+function CelebrateReveal({ active, motif, reduce }: { active: boolean; motif: string[]; reduce: boolean }) {
+  return (
+    <AnimatePresence>
+      {active && !reduce && (
+        <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden" aria-hidden>
+          {Array.from({ length: 18 }).map((_, index) => {
+            const angle = (index / 18) * Math.PI * 2;
+            const distance = 120 + (index % 4) * 34;
+            return (
+              <motion.span
+                key={index}
+                initial={{ opacity: 0, x: 0, y: 0, scale: 0.55, rotate: 0 }}
+                animate={{
+                  opacity: [0, 1, 1, 0],
+                  x: Math.cos(angle) * distance,
+                  y: Math.sin(angle) * distance - 72,
+                  scale: [0.55, 1.15, 0.9],
+                  rotate: index % 2 ? 24 : -24,
+                }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 1.25 + (index % 3) * 0.12, ease: [0.16, 0.84, 0.32, 1], delay: index * 0.018 }}
+                className="absolute left-1/2 top-[48%] text-[18px] sm:text-[22px]"
+              >
+                {motif[index % motif.length]}
+              </motion.span>
+            );
+          })}
+        </div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -242,7 +337,7 @@ function TheCard({ data, theme, mode }: { data: CardSceneData; theme: Theme; mod
         transition={{ delay: 0.35, type: "spring", stiffness: 120, damping: 12 }}
         className="relative"
       >
-        <PandaMoodFace mood={pandaMoodForTheme(theme.id)} size={110} className="drop-shadow-md" />
+        <PandaMoodFace mood={pandaMoodForCard(theme.id, data.occasionId)} size={110} className="drop-shadow-md" />
       </motion.div>
 
       <motion.div
@@ -272,7 +367,10 @@ function TheCard({ data, theme, mode }: { data: CardSceneData; theme: Theme; mod
           transition={{ delay: 0.75 }}
           className="relative w-full"
         >
-          <div className="flex gap-2.5 justify-center flex-wrap">
+          <div className={cn(
+            "mx-auto grid w-full max-w-[340px] gap-2.5",
+            data.photos.length === 1 ? "grid-cols-1" : data.photos.length === 2 ? "grid-cols-2" : "grid-cols-3"
+          )}>
             {data.photos.slice(0, 5).map((p, i) => (
               <motion.div
                 key={i}
@@ -280,12 +378,15 @@ function TheCard({ data, theme, mode }: { data: CardSceneData; theme: Theme; mod
                 animate={{ opacity: 1, scale: 1, rotate: i % 2 ? 1.5 : -1.5 }}
                 transition={{ delay: 0.8 + i * 0.08 }}
                 whileHover={{ scale: 1.06, rotate: 0, zIndex: 5 }}
-                className="shrink-0"
+                className={cn(
+                  "overflow-hidden rounded-2xl border-2 border-white bg-ink/5 shadow-[0_12px_24px_-16px_rgba(22,36,28,0.7)]",
+                  data.photos?.length === 1 ? "aspect-[4/3]" : "aspect-square"
+                )}
               >
                 <img
-                  src={p}
+                  src={cardPhotoUrl(data.photoSlug ?? "", p) ?? ""}
                   alt={`A photo of you two, number ${i + 1}`}
-                  className="h-24 w-24 sm:h-28 sm:w-28 rounded-xl object-cover border-2 border-white shadow-md"
+                  className="h-full w-full object-cover"
                 />
               </motion.div>
             ))}
@@ -359,7 +460,6 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
   const [sentKinds, setSentKinds] = useState<Set<string>>(() => new Set());
   const [burst, setBurst] = useState<{ id: number; emoji: string }[]>([]);
   const [replyOpen, setReplyOpen] = useState(false);
-  const [replyName, setReplyName] = useState("");
   const [replyText, setReplyText] = useState("");
   const [replySent, setReplySent] = useState(false);
   const [replyError, setReplyError] = useState<string | null>(null);
@@ -409,14 +509,14 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
   };
 
   const sendReply = async () => {
-    if (!replyName.trim() || !replyText.trim() || sending) return;
+    if (!replyText.trim() || sending) return;
     setSending(true);
     setReplyError(null);
     try {
       const res = await fetch(`/api/cards/${slug}/replies`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ authorName: replyName, message: replyText }),
+        body: JSON.stringify({ message: replyText }),
       });
       if (res.ok) {
         setReplySent(true);
@@ -474,7 +574,7 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
             private link
           </span>
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="mt-4 grid grid-cols-4 gap-2">
           {REACTION_KINDS.map((r) => {
             const count = reacted[r.id] ?? 0;
             const sent = sentKinds.has(r.id);
@@ -485,16 +585,16 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
                 aria-pressed={sent}
                 aria-label={`${r.label}${count ? `, ${count} received` : ""}`}
                 className={cn(
-                  "relative flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-3 py-2.5 text-[12px] font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-jade/45",
+                  "relative flex min-h-[72px] flex-col items-center justify-center gap-0.5 rounded-2xl border px-1.5 py-2 text-[10px] font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-jade/45 sm:min-h-[78px] sm:text-[11px]",
                   sent
                     ? "border-jade/35 bg-jade/10 text-jade"
                     : "border-ink/[0.09] bg-white/70 text-ink/70 hover:-translate-y-0.5 hover:border-blush/40 hover:shadow-[0_8px_18px_-12px_rgba(22,36,28,0.5)] active:translate-y-0"
                 )}
               >
-                <span className="text-lg" aria-hidden>{r.emoji}</span>
-                <span>{r.label}</span>
+                <span className="text-xl leading-none sm:text-[22px]" aria-hidden>{r.emoji}</span>
+                <span className="max-w-full truncate px-1">{r.label}</span>
                 {count > 0 && (
-                  <span className="grid min-w-5 h-5 place-items-center rounded-full bg-ink/[0.08] px-1 text-[10.5px] font-bold text-ink/60">
+                  <span className="absolute right-1.5 top-1.5 grid min-w-4 h-4 place-items-center rounded-full bg-ink/[0.08] px-1 text-[9px] font-bold text-ink/60">
                     {count}
                   </span>
                 )}
@@ -504,22 +604,17 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
         </div>
         {reactionError && <p className="mt-3 text-center text-[12.5px] text-blush" role="alert">{reactionError}</p>}
 
-        <div className="mt-4 border-t border-ink/[0.08] pt-4">
+        <div className="mt-5 border-t border-ink/[0.08] pt-4">
           {!replySent ? (
             replyOpen ? (
-              <div className="space-y-3" aria-label="Reply to this card">
-                <div className="flex items-center gap-2">
-                  <span className="grid h-7 w-7 place-items-center rounded-full bg-blush/10 text-sm" aria-hidden>✍️</span>
-                  <p className="text-[13px] font-semibold text-ink">Write {data.senderName} back</p>
+              <div className="space-y-3" aria-label={`Reply to ${data.senderName}`}>
+                <div className="flex items-center gap-2.5">
+                  <span className="grid h-8 w-8 place-items-center rounded-full bg-blush/10 text-sm" aria-hidden>✍️</span>
+                  <div>
+                    <p className="text-[13px] font-semibold text-ink">A note from {data.recipientName}</p>
+                    <p className="text-[11px] text-ink/45">It goes straight back to {data.senderName}.</p>
+                  </div>
                 </div>
-                <input
-                  value={replyName}
-                  onChange={(e) => setReplyName(e.target.value)}
-                  placeholder="Your name"
-                  aria-label="Your name"
-                  maxLength={40}
-                  className="w-full rounded-xl border border-ink/12 bg-white px-4 py-2.5 text-[13.5px] focus:outline-none focus:ring-2 focus:ring-jade/30"
-                />
                 <div className="relative">
                   <textarea
                     value={replyText}
@@ -547,7 +642,7 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
                   </button>
                   <button
                     onClick={sendReply}
-                    disabled={!replyName.trim() || !replyText.trim() || sending}
+                    disabled={!replyText.trim() || sending}
                     className="sheen inline-flex items-center gap-1.5 rounded-full bg-jade px-5 py-2.5 text-[13px] font-semibold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-jade/35 focus-visible:ring-offset-2"
                   >
                     <Send className="h-3.5 w-3.5" />
@@ -556,18 +651,18 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col gap-2.5 sm:flex-row">
+              <div className="grid grid-cols-2 gap-2.5">
                 <button
                   onClick={() => setReplyOpen(true)}
-                  className="inline-flex flex-1 justify-center items-center gap-1.5 rounded-full border border-ink/12 bg-white px-4 py-2.5 text-[13px] font-medium text-ink/75 hover:border-jade/40 hover:text-jade transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-jade/35"
+                  className="inline-flex min-w-0 justify-center items-center gap-1.5 rounded-2xl border border-ink/12 bg-white px-3 py-3 text-[12px] font-semibold text-ink/75 hover:border-jade/40 hover:text-jade transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-jade/35 sm:text-[13px]"
                 >
-                  ✍️ Write {data.senderName} a note back
+                  <span aria-hidden>✍️</span><span className="truncate">Write back</span>
                 </button>
                 <a
                   href={`/create?replyTo=${slug}&to=${encodeURIComponent(data.senderName)}`}
-                  className="inline-flex flex-1 justify-center items-center gap-1.5 rounded-full bg-ink px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-ink/85 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/35 focus-visible:ring-offset-2"
+                  className="inline-flex min-w-0 justify-center items-center gap-1.5 rounded-2xl bg-ink px-3 py-3 text-[12px] font-semibold text-white hover:bg-ink/85 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/35 focus-visible:ring-offset-2 sm:text-[13px]"
                 >
-                  🐼 Send {data.senderName} a card back
+                  <span aria-hidden>🐼</span><span className="truncate">Send one back</span>
                 </a>
               </div>
             )

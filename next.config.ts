@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
 const nextConfig: NextConfig = {
   output: "standalone",
@@ -13,3 +14,7 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
+// Makes the local R2 simulation available to route handlers during Next dev.
+// Production uses the capability-scoped CARD_PHOTOS binding in wrangler.toml.
+initOpenNextCloudflareForDev();

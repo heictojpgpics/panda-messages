@@ -25,6 +25,7 @@ import { AuthPanel } from "@/components/auth/AuthPanel";
 import { getTheme } from "@/data/themes";
 import { toast } from "sonner";
 import { readDraftMemory, readEditToken, useCardMemoryStore } from "@/stores/card-memory";
+import type { CardPhotoValue } from "@/lib/card-photos";
 
 const DRAFT_MEMORY_KEY = "active";
 
@@ -37,7 +38,7 @@ interface Draft {
   signoff: string;
   theme: string;
   songInput: string;
-  photos: string[];
+  photos: CardPhotoValue[];
   step?: number;
 }
 
@@ -179,6 +180,8 @@ export function Wizard() {
     if (!editingCard) return false;
     setBusy(true);
     try {
+      const photosSaved = await syncPhotos(editingCard);
+      if (!photosSaved) return false;
       const res = await fetch(`/api/cards/${editingCard.slug}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -191,7 +194,6 @@ export function Wizard() {
           signoff,
           theme: draft.theme,
           songId,
-          photos: draft.photos,
         }),
       });
       if (!res.ok) {
@@ -211,6 +213,18 @@ export function Wizard() {
     }
   };
 
+  const syncPhotos = async (card: { slug: string; editToken?: string }): Promise<boolean> => {
+    const res = await fetch(`/api/cards/${card.slug}/photos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ editToken: card.editToken, photos: draft.photos }),
+    });
+    if (res.ok) return true;
+    const body = await res.json().catch(() => ({}));
+    toast(body.error ?? "Panda could not save the photos.");
+    return false;
+  };
+
   const createCard = async (): Promise<{ id: string; slug: string; editToken?: string } | null> => {
     // Reuse the card already made this session instead of minting twins
     // when checkout fails and the user tries again.
@@ -227,9 +241,9 @@ export function Wizard() {
           signoff,
           theme: draft.theme,
           songId,
-          photos: draft.photos,
         }),
       }).catch(() => {});
+      if (!(await syncPhotos(madeCard))) return null;
       return madeCard;
     }
     const res = await fetch("/api/cards", {
@@ -245,7 +259,9 @@ export function Wizard() {
         theme: draft.theme,
         songId,
         songProvider: songId ? "youtube" : null,
-        photos: draft.photos,
+        // Photos are stored separately in private R2 once this draft has a
+        // stable, owner-protected card id. They never travel in a D1 row.
+        photos: [],
         replyTo: params.get("replyTo"),
       }),
     });
@@ -255,6 +271,7 @@ export function Wizard() {
       return null;
     }
     setMadeCard(data);
+    if (!(await syncPhotos(data))) return null;
     return data;
   };
 
@@ -594,6 +611,7 @@ export function Wizard() {
         onClose={() => setPreviewOpen(false)}
         data={{
           occasionLabel: effectiveOccasionLabel,
+          occasionId: draft.occasion,
           recipientName: draft.recipientName || "them",
           senderName: draft.senderName || "you",
           message: draft.message || "Your words will be right here.",
@@ -857,7 +875,11 @@ function MessageStep({
           {photos.map((p, i) => (
             <div key={i} className="relative group">
               { }
-              <img src={p} alt={`Photo ${i + 1}`} className="h-20 w-20 rounded-xl object-cover border border-ink/10" />
+              <img
+                src={typeof p === "string" ? p : ""}
+                alt={`Photo ${i + 1}`}
+                className="h-20 w-20 rounded-xl object-cover border border-ink/10"
+              />
               <button
                 onClick={() => set("photos", photos.filter((_, j) => j !== i))}
                 className="absolute -top-1.5 -right-1.5 grid h-6 w-6 place-items-center rounded-full bg-ink text-white opacity-0 group-hover:opacity-100 transition-opacity"

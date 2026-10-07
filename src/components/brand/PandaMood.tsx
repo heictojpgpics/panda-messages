@@ -28,6 +28,12 @@ const MOODS = {
   confetti: "/panda/theme-confetti-panda.webp",
   sea: "/panda/theme-sea-panda.webp",
   lantern: "/panda/theme-lantern-panda.webp",
+  congratulations: "/panda/occasion-congratulations-panda.webp",
+  thankyou: "/panda/occasion-thank-you-panda.webp",
+  newhome: "/panda/occasion-new-home-panda.webp",
+  newbaby: "/panda/occasion-new-baby-panda.webp",
+  goodluck: "/panda/occasion-good-luck-panda.webp",
+  getwell: "/panda/occasion-get-well-panda.webp",
 } as const;
 
 export type PandaMood = keyof typeof MOODS;
@@ -48,6 +54,22 @@ export function pandaMoodForTheme(themeId: string): PandaMood {
   if (themeId === "sea-glass") return "sea";
   if (themeId === "night-market") return "lantern";
   return "heart";
+}
+
+/** Occasion portraits take priority when a card marks a specific life moment.
+ * A wrapping still controls the background and reveal motif, while Panda
+ * arrives dressed for what the card is actually saying. */
+export function pandaMoodForCard(themeId: string, occasionId?: string): PandaMood {
+  if (occasionId === "congratulations" || occasionId === "proud-of-you") return "congratulations";
+  if (occasionId === "thank-you") return "thankyou";
+  if (occasionId === "new-home") return "newhome";
+  if (occasionId === "new-baby") return "newbaby";
+  if (occasionId === "get-well") return "getwell";
+  if (occasionId === "good-morning") return "sun";
+  if (occasionId === "good-night") return "stargazer";
+  if (occasionId === "sending-kiss" || occasionId === "love-you") return "rose";
+  if (occasionId === "sending-hug") return "heart";
+  return pandaMoodForTheme(themeId);
 }
 
 /** Static panda portraits extracted from the mascot sprite sheets. */
