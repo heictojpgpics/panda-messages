@@ -1,17 +1,17 @@
 # Deploying Panda Messages
 
-The app runs anywhere Next.js runs. Every external piece (storage, payments,
-email, scheduling) is optional and switches on with environment variables
-only: no code changes, no flags. Copy `.env.example` to `.env` and fill in
-what you have.
+The production app runs as one Cloudflare Worker built by OpenNext. D1 and
+R2 are attached as private capability bindings, so the application never
+stores an account-wide Cloudflare API token. Copy `.env.example` to `.env`
+only for local Node development; it is not deployed configuration.
 
-Two deployment shapes, both production grade:
+Two supported development shapes:
 
-1. **A Node host running the standalone build** (Vercel, Railway, Fly,
-   Render, your own box). Fully verified path. Storage: Cloudflare D1 over
-   REST, or a local SQLite file for single-instance hosts.
-2. **Cloudflare Workers** via `@opennextjs/cloudflare`. The full app on the
-   edge, `wrangler.toml` is already in the repo.
+1. **Local Node development** uses the SQLite file automatically. This is
+   never used by the deployed application.
+2. **Cloudflare Workers** is the only production deployment shape. It hosts
+   the Next.js app, its API, the D1 database, private R2 photos, and the
+   delivery cron in one runtime.
 
 ## 1. Quick sanity checks
 
@@ -30,21 +30,11 @@ directory).
 
 ## 2. Storage: Cloudflare D1
 
-The same queries run against a remote D1 database when three variables are
-set. Nothing else changes.
+The Worker uses the `DB` binding declared in `wrangler.toml`. D1 access is
+private to this Worker and never crosses the public management API.
 
 ```bash
 npx wrangler d1 create panda-messages
-```
-
-- Create an API token in the Cloudflare dashboard (My Profile > API Tokens)
-  with **D1 edit** permission.
-- Set:
-
-```
-CLOUDFLARE_ACCOUNT_ID=...
-CLOUDFLARE_API_TOKEN=...
-D1_DATABASE_ID=...
 ```
 
 - Create the tables (idempotent, safe to re-run):
@@ -61,14 +51,18 @@ npm run db:status
 #   users 0 rows, cards 0 rows, ... Remote D1 is ready.
 ```
 
-`db:init` applies the DDL from `src/lib/db/ddl.ts` over the REST API, the
-same statements the local driver applies on boot, so both storages always
-have the identical shape. Additive column changes live in
-`COLUMN_MIGRATIONS` at the bottom of that file; both `db:init` and the
-local driver apply them guarded, so old databases are repaired without
-touching fresh ones.
+`db:init` repairs the existing schema from `src/lib/db/ddl.ts`. New
+production databases should instead use the committed, versioned migration:
 
-## 3. Node host deployment (verified path)
+```bash
+npx wrangler d1 migrations apply panda-messages --remote
+```
+
+Wrangler records each migration, so CI can safely apply only migrations that
+have not reached production. The CLI credential is used only by the machine
+or CI runner that runs the migration.
+
+## 3. Local Node preview
 
 ```bash
 npm install
@@ -76,25 +70,30 @@ npm run build
 npm run start          # node .next/standalone/server.js
 ```
 
-- Set `NEXT_PUBLIC_SITE_URL` to the public URL (card links, emails,
-  redirects, sitemap all derive from it).
-- Set the three D1 variables (recommended) or `SQLITE_PATH` for a file.
-- Set `PORT` if not 80/443 behind a proxy. The standalone server respects
-  `HOSTNAME` and `PORT`.
+- This mode is for local preview only. It writes to SQLite, not the
+  production D1 database, and cannot access the private R2 photo bucket.
+- Set `PORT` if needed. The standalone server respects `HOSTNAME` and
+  `PORT`.
 
 This is the exact path used for the production build check: `npm run build`
 outputs `.next/standalone`, and `npm run start` boots it with plain `node`.
 
-## 4. Cloudflare Workers (verified path)
+## 4. Cloudflare Workers production deployment
 
 The repo ships everything except the two dev-only packages (they are
 heavy; install them when you want this path):
 
 ```bash
-npm install -D @opennextjs/cloudflare wrangler
-npx opennextjs-cloudflare build     # produces .open-next/
-npx wrangler deploy
+npm install
+npm run cf:deploy
 ```
+
+The Worker has two private bindings in `wrangler.toml`:
+
+- `DB` points only to the `panda-messages` D1 database.
+- `CARD_PHOTOS` points only to the `panda-message-photos` R2 bucket. The
+  bucket has no public domain. The app streams individual objects only after
+  checking the private card capability or live-card state.
 
 What is committed for this path:
 
@@ -104,8 +103,8 @@ What is committed for this path:
   `.open-next/worker.js` and adds a `scheduled` handler, which the
   OpenNext worker does not ship: the Cron Trigger calls the delivery
   engine in-process on `/api/cron/deliveries` with `CRON_SECRET`.
-- `wrangler.toml` — entry, `nodejs_compat`, the ASSETS binding,
-  non-secret vars, the cron trigger, observability.
+- `wrangler.toml` — entry, `nodejs_compat`, asset, D1 and R2 bindings,
+  non-secret vars, the cron trigger and observability.
 
 `npx wrangler deploy --dry-run` compiles the whole worker locally and is
 a free sanity check before the real deploy (the bundle is about 7.6MB
@@ -114,9 +113,6 @@ raw, 1.6MB gzipped).
 Secrets never go in the committed file:
 
 ```bash
-npx wrangler secret put CLOUDFLARE_ACCOUNT_ID
-npx wrangler secret put CLOUDFLARE_API_TOKEN
-npx wrangler secret put D1_DATABASE_ID
 npx wrangler secret put STRIPE_SECRET_KEY        # when live
 npx wrangler secret put STRIPE_WEBHOOK_SECRET
 npx wrangler secret put RESEND_API_KEY
@@ -125,12 +121,18 @@ npx wrangler secret put CRON_SECRET
 
 Notes on Workers:
 
-- The app talks to D1 over the REST API, so it needs the account id,
-  token and database id as secrets even inside Cloudflare. (A native D1
-  binding swap later is a contained change in `src/lib/db/d1.ts` only.)
-- The local SQLite driver is imported lazily inside `src/lib/db/sqlite.ts`
-  and never loads in D1 mode, so `better-sqlite3` stays out of the
-  Workers runtime path (the build above proves it).
+- D1 and R2 use Worker bindings, not REST credentials. The Cloudflare token
+  is needed only by Wrangler or CI to deploy and migrate. Never set it as a
+  Worker secret.
+- For an exact local runtime test, run these commands in order:
+
+  ```bash
+  npx wrangler d1 migrations apply panda-messages --local
+  npm run cf:preview
+  ```
+
+  This uses local D1 and R2 simulations. Use remote bindings only when
+  intentionally testing a real Cloudflare resource.
 
 ### Cron Trigger for deliveries
 
@@ -184,9 +186,10 @@ pipeline, no charge). The test card in Stripe test mode is
 | Variable | Required | What it does |
 | --- | --- | --- |
 | `NEXT_PUBLIC_SITE_URL` | recommended | absolute URL for emails, card links, sitemap |
-| `CLOUDFLARE_ACCOUNT_ID` | optional | D1 REST access (all three switch storage to D1) |
-| `CLOUDFLARE_API_TOKEN` | optional | D1 REST access |
-| `D1_DATABASE_ID` | optional | D1 database |
+| `PANDA_STORAGE_MODE` | local only | set to `d1` only when testing the local simulated D1 binding |
+| `CLOUDFLARE_ACCOUNT_ID` | tooling only | deploy and schema migration account |
+| `CLOUDFLARE_API_TOKEN` | tooling only | deploy and schema migration credential, never a Worker secret |
+| `D1_DATABASE_ID` | tooling only | D1 schema migration target |
 | `SQLITE_PATH` | optional | local SQLite file location (default `db/panda.db`) |
 | `STRIPE_SECRET_KEY` | optional | live payments |
 | `STRIPE_WEBHOOK_SECRET` | optional | webhook signature verification |
@@ -198,9 +201,10 @@ pipeline, no charge). The test card in Stripe test mode is
 
 - **Backups**: D1 supports Time Travel (`wrangler d1 export`). Local
   SQLite: copy `db/panda.db` (plus its `-wal` file while the server runs).
-- **Photos** live inside the card row as compressed data URLs (max 5, each
-  under ~200KB client-side). For very high volume, moving to R2 with signed
-  URLs is a contained change in `src/lib/photo.ts` + the `cards` table.
+- **Photos** are compressed in the browser, stored in private R2 (max 5,
+  260KB each), and represented in D1 only by opaque object keys. The bucket
+  has no public URL and objects are served through the authorization-checked
+  card route with `private, no-store` response headers.
 - **The outbox** keeps every email as a record. Drop rows older than 90
   days if you like; nothing links back to them.
 - **Sessions** expire after 30 days. Password claims after 48 hours.

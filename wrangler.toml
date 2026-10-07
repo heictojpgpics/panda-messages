@@ -10,9 +10,6 @@
 # and is not tracked in git.
 #
 # Secrets (never in this file, it is committed):
-#   npx wrangler secret put CLOUDFLARE_ACCOUNT_ID
-#   npx wrangler secret put CLOUDFLARE_API_TOKEN
-#   npx wrangler secret put D1_DATABASE_ID
 #   npx wrangler secret put STRIPE_SECRET_KEY
 #   npx wrangler secret put STRIPE_WEBHOOK_SECRET
 #   npx wrangler secret put RESEND_API_KEY
@@ -32,6 +29,12 @@ binding = "ASSETS"
 [[r2_buckets]]
 binding = "CARD_PHOTOS"
 bucket_name = "panda-message-photos"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "panda-messages"
+database_id = "c7c00bdc-4d00-47f9-a5cd-e401f64830fa"
+migrations_dir = "migrations"
 
 # Non-secret configuration for the worker.
 [vars]

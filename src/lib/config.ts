@@ -21,7 +21,7 @@ export function emailMode(): "resend" | "mock" {
 }
 
 export function storageMode(): "d1" | "local" {
-  return process.env.D1_DATABASE_ID ? "d1" : "local";
+  return process.env.PANDA_STORAGE_MODE === "d1" ? "d1" : "local";
 }
 
 /** The public base URL, one source for links in emails and redirects. */

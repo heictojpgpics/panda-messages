@@ -131,3 +131,22 @@ The landing demo and wizard rehearsal inherit the same pacing through the shared
 - `npm run lint`, `tsc --noEmit`, and `npm run build` all pass.
 - Frame-by-frame vision review of a 30fps capture: seal cracks at 230ms exactly, fold swings visibly for the full window and settles at 1660ms, letter peaks at 2720ms, card hands off at 2960ms. The flap stays attached at the crease in every frame with no gaps or artifacts, the liner reveals as the panel passes vertical, and the seal clears before the fold begins.
 - Landing demo scroll-trigger still opens to the settled pose with the flap resting behind the pocket.
+
+## Cloudflare storage and deployment hardening, 2026-10-07
+
+### Findings and changes
+
+- The private-photo error did not come from a missing value in `.env.example`. That file is documentation only, no `panda-messages` Worker existed in the Cloudflare account, and a static host cannot provide an R2 binding to a Next route handler.
+- Replaced the production D1 REST client with the Worker-native `DB` binding. The deployed application no longer needs, receives, or can leak an account-wide Cloudflare API token. R2 already uses the matching `CARD_PHOTOS` capability binding.
+- Declared the real D1 binding and private R2 bucket in `wrangler.toml`. The Worker is now the one production unit for the Next UI, API routes, D1, R2 proxy, and cron trigger. GitHub Pages is not a fit because it cannot run the private API or cron handler.
+- Added the versioned initial D1 migration and applied it to both Wrangler's local D1 simulation and the existing remote database. Future deployments can use the Wrangler migration ledger instead of a one-off REST script.
+- Added `cf:preview`, which launches the generated Worker entry directly. This avoids a development-only OpenNext/Wrangler generated-file mutation that duplicated `next-env` exports on a second Wrangler dev launch.
+- Pinned Next.js and its ESLint config to 16.3.8. The prior floating range installed Next 16.4, which crashes this OpenNext Worker stack while loading `preview-props.json`; the pinned release is inside the adapter's declared support range and starts correctly in the Worker runtime.
+- Rewrote the deployment guide and `.env.example` comments so it is explicit which variables are local tooling only and which capabilities Cloudflare injects at runtime.
+
+### Verification
+
+- Confirmed the remote D1 database is present and initialized, then verified its users, cards, events, reactions, replies, rate limits, and outbox records through `npm run db:status`.
+- `npm run lint`, `npm run build`, and the clean OpenNext Worker build pass with the pinned dependency set.
+- Wrangler production dry-run passes and lists the `DB`, `CARD_PHOTOS`, and `ASSETS` bindings.
+- In the local Workers runtime, the full private-photo path passes: create draft `200`, R2 upload `200`, owner-authorized read `200` with `image/png`, and no-token draft read `403`.

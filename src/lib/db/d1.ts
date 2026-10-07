@@ -1,93 +1,49 @@
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { drizzle } from "drizzle-orm/sqlite-proxy";
 import type { AsyncBatchRemoteCallback, RemoteCallback } from "drizzle-orm/sqlite-proxy";
 import * as schema from "./schema";
 import type { PandaDatabase } from "./types";
 
 /**
- * Cloudflare D1 driver over the public REST API. Same drizzle queries as
- * the local driver; the statements travel as HTTPS calls instead.
+ * Cloudflare D1 driver through the Worker binding. Same drizzle queries as
+ * the local driver, but no management API request or account-wide token is
+ * present in the deployed application.
  *
- * Why two endpoints:
- *  - `/raw` returns rows as positional arrays together with their column
- *    names, which is exactly the row shape drizzle's proxy session maps
- *    (it reads results by index, not by name). Single statements use it.
- *  - `/query` accepts an array of statements and runs them inside one
- *    transaction: all of it lands or none of it does. Batches use it and
- *    convert the object rows to positional rows via the key order, which
- *    the API emits in query-column order.
- *
- * Requires: CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN, D1_DATABASE_ID.
- * The token needs D1 edit permission (Account > API Tokens > a role that
- * includes D1).
+ * The DB binding is declared in wrangler.toml. Cloudflare gives the Worker
+ * that one capability directly, so production never needs a Cloudflare API
+ * token, account ID or database ID at runtime.
  */
 
 let cached: PandaDatabase | null = null;
 
-interface D1Statement {
-  sql: string;
-  params: unknown[];
-}
+type BoundStatement = {
+  raw: () => Promise<unknown[][]>;
+};
 
-/** D1 binds integers, not booleans. */
+type D1Binding = {
+  prepare: (sql: string) => { bind: (...params: unknown[]) => BoundStatement };
+  batch: (statements: BoundStatement[]) => Promise<{ results?: Record<string, unknown>[] }[]>;
+};
+
+/** D1 stores booleans as integers. */
 function toParam(p: unknown): unknown {
   return typeof p === "boolean" ? (p ? 1 : 0) : p;
 }
 
-function requireEnv(): { accountId: string; apiToken: string; databaseId: string } {
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
-  const databaseId = process.env.D1_DATABASE_ID;
-  if (!accountId || !apiToken || !databaseId) {
+async function getBinding(): Promise<D1Binding> {
+  const { env } = await getCloudflareContext({ async: true });
+  const db = (env as unknown as { DB?: D1Binding }).DB;
+  if (!db) {
     throw new Error(
-      "D1 mode needs CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN and D1_DATABASE_ID."
+      "The Cloudflare DB binding is unavailable. Run through OpenNext/Wrangler locally, or configure the DB binding before deploying."
     );
   }
-  return { accountId, apiToken, databaseId };
-}
-
-async function post(path: string, body: unknown): Promise<Record<string, unknown>> {
-  const { accountId, apiToken, databaseId } = requireEnv();
-  const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/d1/database/${databaseId}/${path}`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`D1 HTTP ${res.status}: ${text.slice(0, 300)}`);
-  }
-  const json = (await res.json()) as Record<string, unknown>;
-  if (json.success !== true) {
-    const errors = (json.errors as { message?: string }[] | undefined) ?? [];
-    const detail = errors.map((e) => e.message).join("; ") || "unknown error";
-    throw new Error(`D1 error: ${String(detail).slice(0, 300)}`);
-  }
-  return json;
-}
-
-/** One statement over /raw: positional rows, in query-column order. */
-async function rawRows(stmt: D1Statement): Promise<unknown[][]> {
-  const json = await post("raw", { sql: stmt.sql, params: stmt.params.map(toParam) });
-  const result = json.result as { results?: { rows?: unknown[][] } }[] | undefined;
-  return result?.[0]?.results?.rows ?? [];
-}
-
-/** A transactional array of statements over /query. */
-async function batchRows(stmts: D1Statement[]): Promise<unknown[][][]> {
-  const body = stmts.map((s) => ({ sql: s.sql, params: s.params.map(toParam) }));
-  const json = await post("query", body);
-  const result = json.result as { results?: Record<string, unknown>[] }[] | undefined;
-  return (result ?? []).map((r) =>
-    (r.results ?? []).map((row) => Object.values(row))
-  );
+  return db;
 }
 
 const execute: RemoteCallback = async (sql, params, method) => {
-  const rows = await rawRows({ sql, params });
+  const db = await getBinding();
+  const rows = await db.prepare(sql).bind(...params.map(toParam)).raw();
   if (method === "get") {
     // The proxy session maps `get` from a single positional row.
     return { rows: rows[0] ?? null };
@@ -96,15 +52,18 @@ const execute: RemoteCallback = async (sql, params, method) => {
 };
 
 const executeBatch: AsyncBatchRemoteCallback = async (batch) => {
-  const results = await batchRows(
-    batch.map((b) => ({ sql: b.sql, params: b.params }))
+  const db = await getBinding();
+  const results = await db.batch(
+    batch.map((statement) => db.prepare(statement.sql).bind(...statement.params.map(toParam)))
   );
-  return results.map((rows) => ({ rows }));
+  return results.map((result) => ({
+    rows: (result.results ?? []).map((row) => Object.values(row)),
+  }));
 };
 
 export async function getD1Db(): Promise<PandaDatabase> {
   if (cached) return cached;
-  requireEnv();
+  await getBinding();
   const db = drizzle(execute, executeBatch, { schema });
   cached = db;
   return cached;
