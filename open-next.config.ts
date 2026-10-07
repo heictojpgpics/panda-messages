@@ -14,6 +14,10 @@
  * must still typecheck without the adapter installed.
  */
 const config = {
+  // The repository keeps bun.lock for Bun users and package-lock.json for
+  // npm users. OpenNext otherwise picks Bun first, even on hosts where it
+  // is not installed, so make the production build tool explicit.
+  buildCommand: "npm run build",
   default: {
     override: {
       wrapper: "cloudflare-node",

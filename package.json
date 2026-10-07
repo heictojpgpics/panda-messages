@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
+    "cf:build": "opennextjs-cloudflare build",
+    "cf:deploy": "opennextjs-cloudflare deploy",
     "start": "node .next/standalone/server.js",
     "lint": "eslint .",
     "db:init": "node scripts/init-d1.mjs",
@@ -80,6 +82,7 @@
     "zustand": "^5.0.6"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.9",
     "@tailwindcss/postcss": "^4",
     "@types/better-sqlite3": "^9.6.0",
     "@types/react": "^19",
@@ -89,7 +92,8 @@
     "eslint-config-next": "^16.1.1",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.5",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.148.0"
   },
   "description": "A personal card, made in a minute, delivered like a gift on the morning you pick."
 }
