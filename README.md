@@ -44,12 +44,15 @@ watches the whole thing happen live.
 ## Quick start
 
 ```bash
+git clone https://github.com/heictojpgpics/panda-messages.git
+cd panda-messages
 npm install          # or bun install
 npm run dev          # http://localhost:3000
 ```
 
 Everything works immediately: make cards, sign up, pay through the simulated checkout,
-watch opens live, read the outbox. No configuration required.
+watch opens live, read the outbox. No configuration required. The local SQLite database
+is created at `db/panda.db` on first boot, tables included.
 
 ## Going real
 
@@ -99,7 +102,7 @@ src/
     create/ card/ auth/ marketing/
   data/                      occasions, themes, message seeds, library, writer
   lib/
-    db/                      drizzle schema + dual drivers (sqlite / D1)
+    db/                      schema.ts, ddl.ts, and the two drivers (sqlite / d1)
     auth.ts email.ts payments.ts delivery.ts cards.ts photo.ts
 public/
   mascots/                   panda sprite sheets for page-mascot
@@ -111,8 +114,14 @@ public/
 ```bash
 npm run dev         # develop
 npm run lint        # eslint
-npm run db:init     # create tables on remote D1 (needs D1 env vars)
+npm run build       # strict types + production standalone build
+npm run start       # run the standalone build with plain node
+npm run db:init     # create tables on remote D1 (needs the D1 env vars)
+npm run db:status   # list every table with row counts, local or remote
 ```
+
+Both `bun.lock` and `package-lock.json` are committed, so `npm install` and
+`bun install` are equally reproducible.
 
 ## Pricing philosophy
 
