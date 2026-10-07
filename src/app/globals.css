@@ -286,7 +286,7 @@
   animation: float-soft-2 7s ease-in-out infinite;
 }
 
-/* Falling sparkle/hearts ambient */
+/* Falling sparkle/hearts ambient (landing hero) */
 @keyframes drift-down {
   0% { transform: translate3d(0, -12vh, 0) rotate(0deg); opacity: 0; }
   8% { opacity: var(--drift-opacity, 0.5); }
@@ -296,6 +296,45 @@
 .drift-piece {
   animation: drift-down var(--drift-duration, 18s) linear infinite;
   animation-delay: var(--drift-delay, 0s);
+}
+
+/* Card-view weather: fall on the outer layer, sway on the inner one.
+   Two nested animations walk a sinusoidal path with no JS per frame. */
+@keyframes drift-fall {
+  0% { transform: translate3d(0, -10vh, 0); }
+  100% { transform: translate3d(0, 110vh, 0); }
+}
+.drift-fall {
+  animation-name: drift-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+@keyframes drift-sway {
+  0% { transform: translateX(calc(var(--sway, 20px) * -1)) rotate(calc(var(--rotate, 20deg) * -0.55)); }
+  50% { transform: translateX(var(--sway, 20px)) rotate(var(--rotate, 20deg)); }
+  100% { transform: translateX(calc(var(--sway, 20px) * -1)) rotate(calc(var(--rotate, 20deg) * -0.55)); }
+}
+.drift-sway {
+  animation-name: drift-sway;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-duration: var(--sway-duration, 4s);
+  animation-direction: alternate;
+}
+/* Header-safe band: nothing materializes near the page header or the
+   bottom fold, whatever the viewport. */
+.drift-mask {
+  mask-image: linear-gradient(to bottom, transparent 0, black 17%, black 91%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 17%, black 91%, transparent 100%);
+}
+
+/* Tiny star twinkle for celebration accents */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.14; transform: scale(0.78); }
+  50% { opacity: 0.72; transform: scale(1.12); }
+}
+.twinkle {
+  animation: twinkle 2.6s ease-in-out infinite;
 }
 
 /* Pulsing live dot */

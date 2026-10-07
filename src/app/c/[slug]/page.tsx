@@ -94,7 +94,7 @@ export default async function CardPage({ params }: Props) {
 
   return (
     <main className="min-h-screen bg-mist/50 flex flex-col">
-      <header className="relative z-30 w-full px-4 pb-2 pt-5 flex flex-col items-center gap-2">
+      <header className="relative z-30 w-full px-4 pb-3.5 pt-5 flex flex-col items-center gap-2">
         {card.replyToCardId && (
           <p className="rounded-full bg-jade-soft/70 border border-jade/20 px-4 py-1.5 text-[11.5px] font-semibold text-jade">
             🐼 One of yours, come back around
@@ -102,12 +102,12 @@ export default async function CardPage({ params }: Props) {
         )}
         <Link
           href="/"
-          className="mx-auto flex w-fit items-center gap-2 rounded-full bg-white/70 border border-ink/10 px-4 py-2 text-[12.5px] font-medium text-ink/70 hover:text-ink transition-colors backdrop-blur"
+          className="mx-auto flex w-fit items-center gap-2 rounded-full bg-white/85 border border-ink/10 px-4 py-2 text-[12.5px] font-medium text-ink/70 hover:text-ink hover:border-ink/25 transition-colors backdrop-blur-sm shadow-[0_2px_10px_-4px_rgba(22,36,28,0.18)]"
         >
           🐼 sent with Panda Messages
         </Link>
       </header>
-      <div className="relative z-0 flex-1 px-2 pb-8 pt-2 sm:px-4">
+      <div className="relative z-0 flex-1 px-2 pb-8 pt-3 sm:px-4">
         <CardSceneClient
           slug={slug}
           data={{

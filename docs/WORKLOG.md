@@ -67,3 +67,53 @@
 - Local HTTP smoke check returns `200` for the landing page. A draft reply read remains protected with `409`.
 - Browser screenshot automation was attempted against the local server but the isolated browser cannot reach the sandbox address. The running app was checked over HTTP, and the animation, z-index, responsive grid, and focus paths were additionally verified in source and production build output.
 - The supplied Cloudflare token authenticates and initialized D1, but Cloudflare rejected R2 operations because that token lacks R2 Object Storage permission. The binding and routes are committed and ready; creating or binding the production bucket requires a token with R2 edit permission.
+
+## Envelope and reveal redesign, 2026-10-07
+
+### What changed
+
+The envelope was rebuilt as a physical prop rather than a vector illustration. It is now layered the way real mail is: an inside back, a dark mouth band, the sheet, the addressed front panel, the flap, the wax. The sheet rests fully inside the pocket and only ever emerges through the mouth, so a sealed envelope no longer shows paper poking out the top. The paper carries grain, seam lines, a light-catching fold ridge, a perforated stamp with a panda portrait and value tablet, a wavy cancellation mark, an italic "to {name}" address block, and a "panda post" return corner. The seal is a hand-poured wax blob with an embossed ring, a stamped-in panda, and a periodic glint while it waits.
+
+The opening is now a six-stage sequence driven by one phase machine in CardScene: pressing (the whole prop gives under the tap), cracking (the wax tears into two halves plus eleven shards with gravity and a dust puff), unfolding (the flap tip springs up as the wax lets go, resists, then flops back past its crease), rising (the sheet climbs with friction, overshoots a hair and settles while the envelope leans back), lifted (a breath with the sheet held in the air), and card (the letter hands off to the card). Full pace is about 2.6 seconds to the card, roughly a quarter of that under reduced motion.
+
+The celebration and the ambient weather were rebuilt in AmbientParticles. The burst is three choreographed waves: theme-colored confetti, the occasion's glyphs, then slow stars. The ambient drift falls in three depth layers with sinusoidal sway, masked away from the header band so nothing ever crowds the brand pill. Motifs are chosen for the occasion first, the wrapping second, and the season only when the card does not already have strong weather of its own: February adds hearts, late December into January adds snow, October adds leaves and pumpkins, graduation week adds caps and confetti.
+
+The reactions and reply block was rebalanced. Reactions run three across on a phone and six on a desk, labels wrap instead of truncating, counts pop in with a spring, and the celebration bursts rise out of the tapped button rather than the middle of the screen. "Write {sender} back" is now the primary action in jade, with "Send a card back" as its quiet partner, stacked on narrow screens. The delivery header gained breathing room and a stronger pill so it always reads.
+
+### Fixes found along the way
+
+- The stage chain read a missing "card" key from the timing table, producing a NaN delay that stalled the sequence at the lifted stage. The table now covers every stage and the chain guards against non-finite holds.
+- Inline style floats rounded to six significant digits in server HTML but compared as raw doubles during hydration, which tripped a mismatch warning. Every computed style value in the envelope and the particles is now quantized to two decimals.
+- The seed script for local testing had shifted positional parameters (cards landed with plan and status crossed). It uses named parameters now.
+
+### Verification
+
+- `npm run lint`, `tsc --noEmit`, and `npm run build` all pass.
+- Browser automation with screenshot and video capture verified the sequence on desktop and a 390px phone across bamboo, birthday, rose, winter, autumn, moonlit, and confetti wrappings, plus the landing demo, the wizard's rehearsal dialog, the reaction and reply flows, and replay.
+- Vision review of the captured frames scored the sealed state 8.5/10, the mobile experience 9/10, and themed openings 9 to 10 out of 10, with the remaining notes (dev-tools badge, recording artifacts) outside the product.
+- Zero hydration errors on the landing and card pages after the quantization fix.
+
+## The fold, redone as a fold
+
+The first rebuild of the opening still treated the flap as a shape that flips. Two root causes sat underneath the symptom. First, the flap's rotation was rendered with no perspective at all: a clipping wrapper between the stage and the flap flattened the 3D context, so rotateX collapsed into a plain vertical squash, which reads on screen as a flat panel shrinking to a line and reappearing upside down. Second, the liner face was never mirrored for the folded-back position, so the opened flap showed its broad edge up and its point at the crease, exactly backwards, with a dark band where the join should be.
+
+The flap now lives inside its own perspective viewport and rotates around a hinge set a couple of pixels below the top edge. The crease edge never leaves the hinge; the panel foreshortens as it lifts, passes edge-on as a short standing band, and unfolds on the far side with the liner showing, its wide edge landing at the crease and its rounded tip pointing up. It comes to rest at 186 degrees, a hair past flat, the way a panel resting against the back panel of a real pocket would. Two backface-culled shade overlays ride the fold: the outer paper falls into shade as it swings up, and the liner is revealed deep in the pocket's shadow and comes back into the light as it settles. A thin light stroke along the free edge gives the paper a glint at the edge-on moment.
+
+The join is now drawn rather than hoped for. A lip strip along the back panel's top edge sits over the crease in every state, so the flap reads as attached behind the envelope whether sealed or open, and the liner carries a contact shadow where the pocket's edge shades it. The wax seal moved from mid-flap to the tip, where it actually bonds flap to pocket, and the front panel's big fold triangle was quieted to a shallow seam so it can no longer read as a second flap.
+
+Z order became explicit choreography. While the flap covers the face it lives above the mail layer; once it rests behind, it drops below the letter, so the sheet climbs past in front of the open liner, and its top edge slips out from behind the upper lip like real mail leaving a pocket. The clipping wrapper, whose bounds had also been silently trimming the risen letter's top, now clears far above the stage.
+
+The landing demo and the wizard's rehearsal get the same chain through an internal two-beat sequence: the flap folds first, the letter climbs only after it settles. A demo envelope that renders already open skips straight to the settled pose.
+
+### Fixes found along the way
+
+- The unfolding keyframes were unreachable code: an earlier branch in the same animate expression caught the stage first, so the fold played as a single flat tween with none of its intended beats. The branch order now puts the unfolding case first.
+- The clip wrapper's top bound (-60 percent) sat below both the open flap's tip and the letter's peak, trimming both during the rise. The bound now clears the full travel.
+- The wax seal floated at mid flap, detached from the tip it was supposed to bond. It sits at the tip now, straddling the join, with the shatter origin matched in the scene.
+- The wizard's rehearsal renders its envelope already open, which the completion-driven internal chain would have left waiting for an animation that never runs. The chain seeds itself from the mount-time open flag.
+
+### Verification
+
+- `npm run lint`, `tsc --noEmit`, and `npm run build` all pass; zero hydration errors on landing and card pages.
+- Frame-by-frame vision review (10 fps contact sheets) of the fold: real 3D hinge with foreshortening and an edge-on standing moment, attached at the crease throughout, no gap, no 2D flip artifact, dynamic shading visible frame to frame, shade overlays confined to the flap shape. Fold realism scored 9/10; the full opening received a SHIP verdict.
+- Regression checks: landing demo close and reopen on scroll, wizard rehearsal end to end, mobile at 390px, sealed and final states, and the handoff crossfade inspected at full resolution (no empty beat).
