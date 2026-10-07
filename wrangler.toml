@@ -31,7 +31,7 @@ binding = "ASSETS"
 
 # Non-secret configuration for the worker.
 [vars]
-NEXT_PUBLIC_SITE_URL = "https://pandamessages.com"
+NEXT_PUBLIC_SITE_URL = "https://panda-messages.heictojpg-pics.workers.dev"
 
 # Scheduled deliveries. Every minute the cron pings the delivery engine
 # inside the worker. Remove this block if you use an external scheduler
