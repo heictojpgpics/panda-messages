@@ -46,7 +46,15 @@ export default function CheckoutPage() {
   const [name, setName] = useState("");
 
   useEffect(() => {
-    fetch(`/api/checkout/info?cardId=${cardId}`)
+    const tokens = (() => {
+      try {
+        return JSON.parse(localStorage.getItem("panda-edit-tokens") ?? "{}");
+      } catch {
+        return {};
+      }
+    })();
+    const token = tokens[cardId];
+    fetch(`/api/checkout/info?cardId=${encodeURIComponent(cardId)}${token ? `&editToken=${encodeURIComponent(token)}` : ""}`)
       .then(async (r) => {
         if (!r.ok) throw new Error("not found");
         return r.json();
@@ -55,10 +63,7 @@ export default function CheckoutPage() {
         setCard(d.card);
         // The edit token lives client-side, keyed by slug. Without it the
         // completion endpoint cannot know this checkout belongs to us.
-        try {
-          const tokens = JSON.parse(localStorage.getItem("panda-edit-tokens") ?? "{}");
-          if (tokens[d.card.slug]) setEditToken(tokens[d.card.slug]);
-        } catch {}
+        setEditToken(token ?? null);
         fetch("/api/auth/me")
           .then((r) => (r.ok ? r.json() : { user: null }))
           .then((me) => {

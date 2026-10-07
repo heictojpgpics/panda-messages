@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCardById } from "@/lib/cards";
+import { cardOwnedBy } from "@/lib/cards";
+import { getCurrentUser } from "@/lib/auth";
 
 /** Checkout page needs the order summary. Card ids are unguessable. */
 export async function GET(req: NextRequest) {
@@ -8,6 +10,13 @@ export async function GET(req: NextRequest) {
 
   const card = await getCardById(cardId);
   if (!card) return NextResponse.json({ error: "not found" }, { status: 404 });
+
+  const user = await getCurrentUser();
+  const owns = await cardOwnedBy(card, {
+    user,
+    editToken: req.nextUrl.searchParams.get("editToken"),
+  });
+  if (!owns) return NextResponse.json({ error: "This checkout is not yours." }, { status: 403 });
 
   return NextResponse.json({
     card: {

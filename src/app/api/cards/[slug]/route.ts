@@ -1,18 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { getCardBySlug, getCardById, updateCard, attachCardToUser, cardOwnedBy, logEvent } from "@/lib/cards";
+import { getCardBySlug, updateCard, attachCardToUser, cardOwnedBy, logEvent } from "@/lib/cards";
 
 /**
  * Update a card while it is still editable. A card belongs to its maker:
  * either the signed-in account or the edit token issued at creation.
  */
-export async function PATCH(req: NextRequest) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   try {
     const body = await req.json();
-    const slug = String(body.slug ?? "").trim();
+    const { slug } = await params;
     const editToken = body.editToken ? String(body.editToken).trim() : null;
-    if (!slug) return NextResponse.json({ error: "Which card?" }, { status: 400 });
-
     const card = await getCardBySlug(slug);
     if (!card) return NextResponse.json({ error: "Card not found." }, { status: 404 });
 
@@ -73,6 +71,14 @@ export async function PATCH(req: NextRequest) {
         : [];
       if (photos.length > 5) {
         return NextResponse.json({ error: "Up to 5 photos." }, { status: 400 });
+      }
+      let total = 0;
+      for (const photo of photos) {
+        const bytes = Math.round(photo.length * 0.75);
+        total += bytes;
+        if (bytes > 260_000 || total > 1_600_000) {
+          return NextResponse.json({ error: "Those photos are too heavy together. Try fewer or smaller ones." }, { status: 413 });
+        }
       }
       patch.photos = photos;
     }
