@@ -3,7 +3,6 @@ import { cards } from "./db/schema";
 import { and, eq, lte, ne, sql } from "drizzle-orm";
 import { logEvent } from "./cards";
 import { cardDeliveryEmail, sendEmail } from "./email";
-import { getOccasion } from "@/data/occasions";
 import { siteUrl } from "./config";
 
 export { siteUrl };
@@ -83,21 +82,30 @@ export async function deliverCard(
     .update(cards)
     .set({ status: "sent", updatedAt: new Date().toISOString() })
     .where(and(eq(cards.id, cardId), eq(cards.status, "scheduled")))
-    .returning({ id: cards.id, slug: cards.slug, recipientEmail: cards.recipientEmail, senderName: cards.senderName, recipientName: cards.recipientName, occasion: cards.occasion });
+    .returning({
+      id: cards.id,
+      slug: cards.slug,
+      recipientEmail: cards.recipientEmail,
+      senderName: cards.senderName,
+      recipientName: cards.recipientName,
+      occasion: cards.occasion,
+      customOccasion: cards.customOccasion,
+      theme: cards.theme,
+    });
 
   if (claimed.length === 0) return "claimed";
   const card = claimed[0];
 
   const email = card.recipientEmail;
   const url = `${siteUrl()}/c/${card.slug}`;
-  const occasionLabel = getOccasion(card.occasion)?.label ?? "just because";
-
   if (email) {
     const mail = cardDeliveryEmail({
       recipientName: card.recipientName,
       senderName: card.senderName,
       cardUrl: url,
-      occasionLabel,
+      occasionId: card.occasion,
+      customOccasion: card.customOccasion,
+      themeId: card.theme,
     });
     mail.to = email;
     mail.cardId = cardId;

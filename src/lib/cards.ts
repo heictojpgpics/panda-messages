@@ -37,7 +37,7 @@ export async function logEvent(cardId: string, type: string, meta?: unknown): Pr
  * the watch. Sends the card's owner a short email for the big moments.
  */
 async function notifyOwner(
-  card: { id: string; userId: string | null; recipientName: string },
+  card: { id: string; userId: string | null; recipientName: string; theme: string; occasion: string },
   kind: "opened" | "replied" | "delivery_failed",
   detail?: { replyAuthor?: string; replyText?: string; reason?: string }
 ): Promise<void> {
@@ -52,45 +52,21 @@ async function notifyOwner(
     const email = rows[0]?.email;
     if (!email) return;
 
-    const { sendEmail, renderPandaEmail, escapeHtml } = await import("./email");
-    const cardUrl = `${siteUrl()}/dashboard?watch=`;
+    const { ownerNotificationEmail, sendEmail } = await import("./email");
     const dash = `${siteUrl()}/dashboard`;
-
-    let subject = "";
-    let title = "";
-    let body = "";
-    if (kind === "opened") {
-      subject = `🐼 ${card.recipientName} just opened your card`;
-      title = "They opened it";
-      body = `<p style="margin:0 0 14px;">The seal cracked a moment ago. ${escapeHtml(card.recipientName)} is reading your words right about now.</p>`;
-    } else if (kind === "replied") {
-      subject = `💌 ${detail?.replyAuthor ?? "They"} wrote back to your card`;
-      title = "They wrote back";
-      const quote = detail?.replyText
-        ? `<blockquote style="margin:14px 0;padding:12px 16px;background:#F4F8EF;border-radius:12px;font-style:italic;">${escapeHtml(String(detail.replyText).slice(0, 280))}</blockquote>`
-        : "";
-      body = `<p style="margin:0 0 14px;">${escapeHtml(detail?.replyAuthor ?? card.recipientName)} sent a note back${detail?.replyAuthor ? " to your card" : ""}.</p>${quote}`;
-    } else {
-      subject = "⚠️ A card could not be delivered";
-      title = "A delivery hit a snag";
-      body = `<p style="margin:0 0 14px;">The card for ${escapeHtml(card.recipientName)} could not be delivered${detail?.reason ? `: ${escapeHtml(String(detail.reason).slice(0, 120))}` : "."} You can check the address and try again from your dashboard.</p>`;
-    }
-
-    const html = renderPandaEmail({
-      title,
-      preheader: subject,
-      bodyHtml: `${body}<a href="${dash}" style="display:inline-block;background:#157A55;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:999px;font-weight:600;font-size:15px;">Open my dashboard</a>`,
-      footerNote: "You only get these for your own cards.",
+    const mail = ownerNotificationEmail({
+      email,
+      recipientName: card.recipientName,
+      dashboardUrl: dash,
+      notification: kind,
+      replyAuthor: detail?.replyAuthor,
+      replyText: detail?.replyText,
+      reason: detail?.reason,
+      themeId: card.theme,
+      occasionId: card.occasion,
     });
-    await sendEmail({
-      to: email,
-      subject,
-      html,
-      text: subject,
-      cardId: card.id,
-      kind: "notify",
-    });
-    void cardUrl;
+    mail.cardId = card.id;
+    await sendEmail(mail);
   } catch {
     // Notifications are best-effort; the dashboard is the source of truth.
   }
@@ -335,12 +311,12 @@ export async function recordView(id: string): Promise<boolean> {
     // First open: fire the event the sender has been waiting for.
     await logEvent(id, "opened", {});
     const fresh = await db
-      .select({ userId: cards.userId, recipientName: cards.recipientName })
+      .select({ userId: cards.userId, recipientName: cards.recipientName, theme: cards.theme, occasion: cards.occasion })
       .from(cards)
       .where(eq(cards.id, id))
       .limit(1);
     if (fresh[0]) {
-      await notifyOwner({ id, userId: fresh[0].userId, recipientName: fresh[0].recipientName }, "opened");
+      await notifyOwner({ id, userId: fresh[0].userId, recipientName: fresh[0].recipientName, theme: fresh[0].theme, occasion: fresh[0].occasion }, "opened");
     }
     return true;
   }
@@ -381,13 +357,13 @@ export async function addReply(cardId: string, authorName: string, message: stri
   });
   await logEvent(cardId, "replied", { authorName: authorName.trim() });
   const fresh = await db
-    .select({ userId: cards.userId, recipientName: cards.recipientName })
+    .select({ userId: cards.userId, recipientName: cards.recipientName, theme: cards.theme, occasion: cards.occasion })
     .from(cards)
     .where(eq(cards.id, cardId))
     .limit(1);
   if (fresh[0]) {
     await notifyOwner(
-      { id: cardId, userId: fresh[0].userId, recipientName: fresh[0].recipientName },
+      { id: cardId, userId: fresh[0].userId, recipientName: fresh[0].recipientName, theme: fresh[0].theme, occasion: fresh[0].occasion },
       "replied",
       { replyAuthor: authorName.trim(), replyText: message.trim() }
     );

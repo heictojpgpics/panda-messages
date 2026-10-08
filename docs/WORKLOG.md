@@ -150,3 +150,21 @@ The landing demo and wizard rehearsal inherit the same pacing through the shared
 - `npm run lint`, `npm run build`, and the clean OpenNext Worker build pass with the pinned dependency set.
 - Wrangler production dry-run passes and lists the `DB`, `CARD_PHOTOS`, and `ASSETS` bindings.
 - In the local Workers runtime, the full private-photo path passes: create draft `200`, R2 upload `200`, owner-authorized read `200` with `image/png`, and no-token draft read `403`.
+
+## Transactional email craft, 2026-10-08
+
+### Findings and changes
+
+- Delivery mail was visually generic. It did not know the selected wrapping or occasion, used one repeated mascot, and relied on a browser-style button that can render inconsistently in legacy Outlook.
+- Rebuilt the transaction-email frame as a 600px fluid table layout with fully inline critical styles, a genuine preview line, mobile spacing rules, semantic presentational tables, image fallbacks, and an Outlook VML button. It keeps the message usable if remote images are blocked and does not attempt to reproduce the on-site opening animation inside an inbox.
+- Added four original transparent Panda email portraits and compressed them to palette PNGs for broad email-client compatibility: everyday post, celebration, love, and moonlit delivery. Their alpha channels are preserved and the full asset set is 600KB.
+- Every built-in occasion now maps to a fitting portrait, while all fourteen card themes carry their own paper, envelope, wax, and action color into delivery, receipt, account-claim, opened, reply, and delivery-problem emails.
+- Threaded theme, occasion, and custom-occasion data through the scheduled delivery worker, mock checkout, Stripe webhook, and sender-notification path. No recipient card photos are placed in an email, so private keepsakes remain behind the capability link.
+- Rewrote the transactional copy to be direct and human. Subjects, preview text, body, and plain-text alternatives now say the same thing, with no artificial urgency or misleading hidden content.
+
+### Verification
+
+- Inspected each generated source portrait and the final compressed assets. All four are 600 × 750 sRGB PNGs with transparency and clean silhouettes.
+- `npm run lint` passes.
+- `git diff --check` passes.
+- A clean `npm run build` passes after clearing a corrupt local Turbopack cache. The initial build failure was an internal Turbopack cache panic, not an application failure.

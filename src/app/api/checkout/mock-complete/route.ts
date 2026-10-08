@@ -92,7 +92,13 @@ export async function POST(req: NextRequest) {
         const token = await createPasswordClaim(account.id);
         claimUrl = `/set-password?token=${token}`;
         const origin = req.nextUrl.origin;
-        const mail = claimEmail({ email: account.email, claimUrl: `${origin}${claimUrl}` });
+        const mail = claimEmail({
+          email: account.email,
+          claimUrl: `${origin}${claimUrl}`,
+          occasionId: card.occasion,
+          customOccasion: card.customOccasion,
+          themeId: card.theme,
+        });
         mail.to = account.email;
         await sendEmail(mail);
         // Intentionally not creating a session here either: the password
@@ -108,6 +114,9 @@ export async function POST(req: NextRequest) {
       recipientName: card.recipientName,
       dashboardUrl: `${siteUrl()}/dashboard?watch=${card.slug}`,
       refundNoteUrl: `${siteUrl()}/refund-policy`,
+      occasionId: card.occasion,
+      customOccasion: card.customOccasion,
+      themeId: card.theme,
     });
     receipt.to = accountEmail ?? buyerEmail;
     receipt.cardId = card.id;

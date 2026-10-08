@@ -67,7 +67,13 @@ export async function POST(req: NextRequest) {
     await attachCardToUser(card.id, account.id);
     if (claimUrl) {
       const origin = process.env.NEXT_PUBLIC_SITE_URL ?? siteUrl();
-      const mail = claimEmail({ email: account.email, claimUrl: `${origin}${claimUrl}` });
+      const mail = claimEmail({
+        email: account.email,
+        claimUrl: `${origin}${claimUrl}`,
+        occasionId: card.occasion,
+        customOccasion: card.customOccasion,
+        themeId: card.theme,
+      });
       mail.to = account.email;
       await sendEmail(mail);
     }
@@ -76,6 +82,9 @@ export async function POST(req: NextRequest) {
       recipientName: card.recipientName,
       dashboardUrl: `${siteUrl()}/dashboard?watch=${card.slug}`,
       refundNoteUrl: `${siteUrl()}/refund-policy`,
+      occasionId: card.occasion,
+      customOccasion: card.customOccasion,
+      themeId: card.theme,
     });
     receipt.to = account.email;
     receipt.cardId = card.id;
