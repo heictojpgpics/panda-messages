@@ -655,9 +655,13 @@ function OutboxTab({ mails }: { mails: OutboxMail[] }) {
           </button>
           {openId === m.id && (
             <div className="border-t border-ink/8 p-4 bg-white/60">
-              <div
-                className="mx-auto max-w-md rounded-2xl overflow-hidden border border-ink/10 bg-white shadow-sm [&_a]:text-jade"
-                dangerouslySetInnerHTML={{ __html: m.html }}
+              {/* Sandboxed iframe: the email is a full document with its own
+                  styles, so it must never share CSS with this page. */}
+              <iframe
+                title={`Preview of ${m.subject}`}
+                srcDoc={m.html}
+                sandbox="allow-popups allow-popups-to-escape-sandbox"
+                className="mx-auto block h-[760px] w-full max-w-md rounded-2xl border border-ink/10 bg-white shadow-sm sm:h-[840px]"
               />
             </div>
           )}

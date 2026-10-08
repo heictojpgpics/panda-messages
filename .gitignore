@@ -61,6 +61,7 @@ local-*
 *.db-wal
 
 # sandbox/dev artifacts
+artifacts/
 dev.log
 dev.out.log
 server.log

@@ -114,6 +114,7 @@ export async function POST(req: NextRequest) {
       recipientName: card.recipientName,
       dashboardUrl: `${siteUrl()}/dashboard?watch=${card.slug}`,
       refundNoteUrl: `${siteUrl()}/refund-policy`,
+      scheduledFor: card.deliverAt ?? null,
       occasionId: card.occasion,
       customOccasion: card.customOccasion,
       themeId: card.theme,
