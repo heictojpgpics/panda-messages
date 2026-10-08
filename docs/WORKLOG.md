@@ -168,3 +168,69 @@ The landing demo and wizard rehearsal inherit the same pacing through the shared
 - `npm run lint` passes.
 - `git diff --check` passes.
 - A clean `npm run build` passes after clearing a corrupt local Turbopack cache. The initial build failure was an internal Turbopack cache panic, not an application failure.
+
+## The mail piece, 2026-10-08 (v2)
+
+### The idea
+
+An email from Panda is not a notification, it is mail. The previous template
+was a centered card with a dropped-in mascot: pleasant, but it read like every
+transactional email. The redesign treats the message itself as the object the
+recipient will hold: a postal band like the back of an envelope, the carrier
+presenting a sealed card, an address face, a wax seal over the fold. The card
+inside stays hidden on purpose. The curiosity gap is the product.
+
+### Findings and changes
+
+- The email is now a physical mail piece built from five acts: a PANDA POST
+  band with a FIRST CLASS postmark and the send date, the carrier holding the
+  sealed envelope, a dashed perforation into the letter, the address face and
+  the words, and the theme's own wax seal over the fold before the button.
+- Every one of the fourteen themes carries its real materials: the band takes
+  the envelope flap color, the button takes the wax color darkened until white
+  text passes WCAG AA, and the paper, hairlines, and footer wash derive from
+  the theme. Band text color is chosen by luminance, so dark themes like Rose
+  Garden and Midnight Velvet get light lettering without hand tuning.
+- Ten new occasion portraits join the original four: birthday, Christmas,
+  Mother's Day, Father's Day, graduation, new baby, new home, thank you, get
+  well, and good morning. Every portrait holds a sealed envelope with a
+  visible wax seal, because the card inside must never appear in the inbox.
+  Each one was audited for rendering defects and regenerated until clean.
+- The wax seal is no longer a stock blob: each theme's seal is rendered from
+  the site's own seal artwork, panda emboss and all, as a small transparent
+  PNG used above the call to action.
+- All twenty-four occasions have hand written lines, with a custom-occasion
+  fallback. Subjects lead with the recipient's name: "Maya, a sealed envelope
+  from Daniel". The button finishes the metaphor: "Open the envelope".
+- The receipt now tells the sender when Panda will carry the card, reads as a
+  postmaster's record with a For, Occasion, and Send date table, and receives
+  the scheduled day from both checkout paths. The reply notification quotes
+  the note on paper with the author's name, and links straight to the card.
+- Client hardening: table layout with inline paint, VML roundrect button for
+  Outlook with a graceful anchor for everyone else, preheader text, alt text
+  that carries the scene when images are blocked, color-scheme pinned to
+  light so dark mode cannot rewrite a theme, and media queries for phones.
+  The largest email is about 10 KB, far under the Gmail clipping line.
+- The dashboard outbox preview now renders inside a sandboxed iframe. The
+  previous inline injection let the email's document styles leak into the
+  dashboard page.
+- Email generation moved to `src/lib/email/` as four focused modules:
+  palette, copy, artwork, shell, plus templates, behind the same import path.
+  The provider and its signatures are unchanged.
+
+### Verification
+
+- Rendered the full matrix, forty-five emails: every theme, every occasion,
+  the custom-occasion fallback, both receipt variants, the claim, and all
+  three notifications. Screenshots at 375px, 680px, and a 320px stress test.
+  Vision review found no layout breakage, no unreadable text, and no broken
+  assets; the fixed defects along the way were a double-escaped sender name
+  and a dev-server outage that only affected local captures.
+- Dark mode emulation keeps every theme's palette intact, and an images-off
+  pass shows the letter still reads with the panda and seal hidden.
+- End to end in the local D1 runtime: seeded a card, paid through mock
+  checkout, and watched the claim, receipt, and delivery emails land in the
+  outbox with the new subjects, sized 8 to 10 KB each. The delivery email was
+  then screenshotted from the outbox itself, the exact bytes a recipient
+  would see, and reviewed at 9/10 for premium feel.
+- `npm run lint`, `tsc --noEmit`, and a clean production build all pass.

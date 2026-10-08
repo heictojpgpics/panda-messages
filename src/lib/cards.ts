@@ -37,7 +37,7 @@ export async function logEvent(cardId: string, type: string, meta?: unknown): Pr
  * the watch. Sends the card's owner a short email for the big moments.
  */
 async function notifyOwner(
-  card: { id: string; userId: string | null; recipientName: string; theme: string; occasion: string },
+  card: { id: string; userId: string | null; recipientName: string; theme: string; occasion: string; slug?: string },
   kind: "opened" | "replied" | "delivery_failed",
   detail?: { replyAuthor?: string; replyText?: string; reason?: string }
 ): Promise<void> {
@@ -58,6 +58,7 @@ async function notifyOwner(
       email,
       recipientName: card.recipientName,
       dashboardUrl: dash,
+      cardUrl: card.slug ? `${siteUrl()}/c/${card.slug}` : undefined,
       notification: kind,
       replyAuthor: detail?.replyAuthor,
       replyText: detail?.replyText,
@@ -311,12 +312,12 @@ export async function recordView(id: string): Promise<boolean> {
     // First open: fire the event the sender has been waiting for.
     await logEvent(id, "opened", {});
     const fresh = await db
-      .select({ userId: cards.userId, recipientName: cards.recipientName, theme: cards.theme, occasion: cards.occasion })
+      .select({ userId: cards.userId, recipientName: cards.recipientName, theme: cards.theme, occasion: cards.occasion, slug: cards.slug })
       .from(cards)
       .where(eq(cards.id, id))
       .limit(1);
     if (fresh[0]) {
-      await notifyOwner({ id, userId: fresh[0].userId, recipientName: fresh[0].recipientName, theme: fresh[0].theme, occasion: fresh[0].occasion }, "opened");
+      await notifyOwner({ id, userId: fresh[0].userId, recipientName: fresh[0].recipientName, theme: fresh[0].theme, occasion: fresh[0].occasion, slug: fresh[0].slug }, "opened");
     }
     return true;
   }
@@ -357,13 +358,13 @@ export async function addReply(cardId: string, authorName: string, message: stri
   });
   await logEvent(cardId, "replied", { authorName: authorName.trim() });
   const fresh = await db
-    .select({ userId: cards.userId, recipientName: cards.recipientName, theme: cards.theme, occasion: cards.occasion })
+    .select({ userId: cards.userId, recipientName: cards.recipientName, theme: cards.theme, occasion: cards.occasion, slug: cards.slug })
     .from(cards)
     .where(eq(cards.id, cardId))
     .limit(1);
   if (fresh[0]) {
     await notifyOwner(
-      { id: cardId, userId: fresh[0].userId, recipientName: fresh[0].recipientName, theme: fresh[0].theme, occasion: fresh[0].occasion },
+      { id: cardId, userId: fresh[0].userId, recipientName: fresh[0].recipientName, theme: fresh[0].theme, occasion: fresh[0].occasion, slug: fresh[0].slug },
       "replied",
       { replyAuthor: authorName.trim(), replyText: message.trim() }
     );
