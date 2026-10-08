@@ -52,8 +52,6 @@ export interface ShellOptions {
   footerWhy: string;
   /** Override the postmark date (tests). */
   date?: Date;
-  /** Hide the hero artwork (quiet emails like the claim). */
-  quiet?: boolean;
 }
 
 /* ---------- building blocks, each a table row of the card ---------- */
@@ -63,7 +61,7 @@ export function eyebrow(text: string, p: EmailPalette): string {
 }
 
 export function headline(text: string, p: EmailPalette): string {
-  return `<h1 class="pm-headline" style="margin:0 0 14px;font-family:${SERIF};font-size:28px;font-weight:700;letter-spacing:-0.3px;line-height:36px;color:${p.heading};">${escapeHtml(text)}</h1>`;
+  return `<h1 class="pm-headline" style="margin:0 0 15px;font-family:${SERIF};font-size:30px;font-weight:700;letter-spacing:-0.45px;line-height:38px;color:${p.heading};">${escapeHtml(text)}</h1>`;
 }
 
 export function paragraph(html: string, p: EmailPalette): string {
@@ -72,9 +70,9 @@ export function paragraph(html: string, p: EmailPalette): string {
 
 /** The address face, like the front of the envelope on the card page. */
 export function addressBlock(recipientName: string, senderName: string, p: EmailPalette): string {
-  return `<table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin:0 0 26px;border-collapse:collapse;">
+  return `<table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin:0 0 28px;border-collapse:collapse;">
   <tr><td style="padding:0 0 4px;font-family:${SANS};font-size:10.5px;font-weight:700;letter-spacing:2px;line-height:14px;text-transform:uppercase;color:${p.muted};">to</td></tr>
-  <tr><td class="pm-name" style="padding:0 0 8px;font-family:${SERIF};font-style:italic;font-size:27px;line-height:34px;color:${p.heading};word-break:break-word;">${escapeHtml(recipientName)}</td></tr>
+  <tr><td class="pm-name" style="padding:0 0 9px;font-family:${SERIF};font-style:italic;font-size:29px;line-height:36px;color:${p.heading};word-break:break-word;">${escapeHtml(recipientName)}</td></tr>
   <tr><td style="padding:0 0 8px;font-size:0;line-height:0;">
     <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="border-collapse:collapse;"><tr>
       <td width="52" height="2" bgcolor="${p.line}" style="width:52px;height:2px;font-size:0;line-height:0;">&nbsp;</td>
@@ -144,8 +142,8 @@ export function renderPandaEmail(opts: ShellOptions): string {
   const date = postmarkLine(opts.date);
 
   const heroRow = art
-    ? `<tr><td class="pm-hero" align="center" bgcolor="#FFFFFF" style="padding:34px 0 20px;background:#FFFFFF;">
-      <img class="pm-art" src="${escapeHtml(art.src)}" width="280" alt="${escapeHtml(art.alt)}" border="0" style="display:block;width:280px;max-width:100%;height:auto;margin:0 auto;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;">
+    ? `<tr><td class="pm-hero" align="center" bgcolor="${p.wash}" style="padding:28px 0 14px;background:${p.wash};">
+      <img class="pm-art" src="${escapeHtml(art.src)}" width="228" alt="${escapeHtml(art.alt)}" border="0" style="display:block;width:228px;max-width:100%;height:auto;margin:0 auto;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;">
     </td></tr>
     <tr><td style="padding:0;font-size:0;line-height:0;"><table role="presentation" border="0" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;"><tr><td style="border-top:1px dashed ${p.line};font-size:0;line-height:0;">&nbsp;</td></tr></table></td></tr>`
     : "";
@@ -176,11 +174,11 @@ export function renderPandaEmail(opts: ShellOptions): string {
       .pm-outer { padding:14px 10px !important; }
       .pm-card { width:100% !important; border-radius:14px !important; }
       .pm-band { padding:14px 18px !important; }
-      .pm-hero { padding:26px 0 14px !important; }
-      .pm-art { width:232px !important; }
+      .pm-hero { padding:24px 0 12px !important; }
+      .pm-art { width:208px !important; }
       .pm-body { padding:26px 22px 30px !important; }
-      .pm-name { font-size:23px !important; line-height:30px !important; }
-      .pm-headline { font-size:23px !important; line-height:31px !important; }
+      .pm-name { font-size:25px !important; line-height:32px !important; }
+      .pm-headline { font-size:25px !important; line-height:33px !important; }
       .pm-quote td { padding:16px 16px 13px !important; }
       .pm-btn, .pm-btn-a { width:100% !important; }
       .pm-footer { padding:20px 22px 24px !important; }
@@ -216,7 +214,7 @@ export function renderPandaEmail(opts: ShellOptions): string {
         ${heroRow}
 
         <!-- the letter -->
-        <tr><td class="pm-body" bgcolor="${p.paper}" style="padding:30px 44px 34px;background:${p.paper};font-family:${SANS};color:${p.ink};">
+        <tr><td class="pm-body" bgcolor="${p.paper}" style="padding:32px 46px 36px;background:${p.paper};font-family:${SANS};color:${p.ink};">
           ${opts.blocks}
           ${sealRow}
           ${ctaRow}
@@ -226,7 +224,7 @@ export function renderPandaEmail(opts: ShellOptions): string {
         <!-- footer -->
         <tr><td class="pm-footer" bgcolor="${p.wash}" style="padding:22px 40px 26px;background:${p.wash};border-top:1px solid ${p.line};">
           <p style="margin:0 0 6px;font-family:${SANS};font-size:10.5px;font-weight:700;letter-spacing:2px;line-height:15px;text-align:center;text-transform:uppercase;color:${p.footer};">Carried by Panda Messages</p>
-          <p style="margin:0 0 10px;font-family:${SANS};font-size:12px;line-height:19px;text-align:center;color:${p.footer};">${opts.footerWhy}</p>
+          <p style="margin:0 0 10px;font-family:${SANS};font-size:12px;line-height:19px;text-align:center;color:${p.footer};">${escapeHtml(opts.footerWhy)}</p>
           <p style="margin:0;font-family:${SANS};font-size:11px;line-height:17px;text-align:center;color:${p.footer};">
             <a href="${escapeHtml(siteUrl())}" style="color:${p.footer};text-decoration:underline;">${escapeHtml(SITE.domain)}</a>
             &nbsp;&middot;&nbsp;

@@ -234,3 +234,20 @@ inside stays hidden on purpose. The curiosity gap is the product.
   then screenshotted from the outbox itself, the exact bytes a recipient
   would see, and reviewed at 9/10 for premium feel.
 - `npm run lint`, `tsc --noEmit`, and a clean production build all pass.
+
+## Mail-piece refinement, 2026-10-09 (v2)
+
+### Findings and changes
+
+- The ten new occasion portraits looked individually pleasant but were opaque RGB images with baked-in pale backgrounds. That broke the shared cutout language and created visible rectangular fields on darker or more saturated theme washes.
+- Replaced every opaque occasion portrait with a custom transparent Panda carrier: birthday, Christmas, Mother's Day, Father's Day, graduation, new baby, new home, thank you, get well, and good morning. Each holds a closed envelope, preserves the private reveal, uses a single readable occasion cue, and has been composed for the small email-hero size.
+- Audited the fourteen wax-seal assets separately. They are already transparent, render from the current Panda seal treatment, and read cleanly at 64px, so they remain the consistent thematic connector between the email and the opening scene.
+- Rebalanced the mail piece. The portrait stage now uses the theme's own paper wash rather than an unrelated white slab, the illustration is deliberately smaller, and the address, heading, body, wax seal, and action now share the reader's attention instead of making the mascot the entire email.
+- Tightened the type rhythm on desktop and mobile, added space around the address face, and kept the primary action at a measured, thumb-friendly size. These changes use client-safe table layout and inline styles rather than a browser-only visual treatment.
+- Hardened the footer copy against unescaped recipient data, repaired the matrix-rendering script so it has a declared `tsx` runner and no CommonJS-in-ESM error, made the seal fixture utility portable, and gave the dashboard preview enough height for a complete mail piece.
+
+### Verification
+
+- All ten replacement portraits are 640 × 800 transparent PNGs. The original four email portraits and all fourteen seal assets also retain alpha channels.
+- `npm run email:preview` now renders the complete 45-email matrix to `artifacts/email-previews` without external or machine-specific paths.
+- Matrix HTML ranges from 8KB to 10KB and contains no unresolved `undefined`, `NaN`, or local author-machine path values.

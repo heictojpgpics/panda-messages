@@ -1,10 +1,10 @@
 // Render the full email verification matrix to standalone HTML files.
 // Usage: npx tsx scripts/render-email-preview.ts <outdir> new
-import { mkdirSync, writeFileSync, readdirSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, writeFileSync, readdirSync, rmSync, statSync } from "node:fs";
+import { join, resolve } from "node:path";
 
 async function main() {
-  const outdir = process.argv[2] ?? "/home/z/my-project/email-previews/new";
+  const outdir = process.argv[2] ?? resolve("artifacts/email-previews");
   rmSync(outdir, { recursive: true, force: true });
   mkdirSync(outdir, { recursive: true });
 
@@ -134,7 +134,7 @@ async function main() {
   const files = readdirSync(outdir).filter((f) => f.endsWith(".html"));
   console.log(`rendered ${files.length} emails to ${outdir}`);
   for (const f of files) {
-    const size = readdirSync(outdir).length ? require("node:fs").statSync(join(outdir, f)).size : 0;
+    const size = statSync(join(outdir, f)).size;
     if (size > 100 * 1024) console.log(`  WARN ${f} is ${(size / 1024).toFixed(0)} KB (Gmail clips over 1024 KB)`);
   }
 }

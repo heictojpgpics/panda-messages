@@ -82,7 +82,7 @@ export function cardDeliveryEmail(opts: {
     ].join(""),
     cta: { href: opts.cardUrl, label: "Open the envelope" },
     micro: `No account needed. It stays between you and ${escapeHtml(sender)}.`,
-    footerWhy: `${escapeHtml(sender)} sent this card with ${SITE.name}, where a card arrives like a gift, not a link.`,
+    footerWhy: `${sender} sent this card with ${SITE.name}, where a card arrives like a gift, not a link.`,
   });
 
   return { to: "", subject, html, text, kind: "card" };

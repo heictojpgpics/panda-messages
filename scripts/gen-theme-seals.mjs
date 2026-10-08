@@ -1,9 +1,9 @@
-// Generate per-theme wax seal PNGs by rendering the site's exact seal SVG.
-// Usage: node scripts/gen-theme-seals.mjs   (then bash screenshot loop + process)
+// Generate portable per-theme wax-seal HTML fixtures from the site's seal SVG.
+// Usage: node scripts/gen-theme-seals.mjs [output-directory]
 import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
-const OUT = "/home/z/my-project/email-previews/seals";
+const OUT = resolve(process.argv[2] ?? "artifacts/email-seal-fixtures");
 mkdirSync(OUT, { recursive: true });
 
 const THEMES = [
@@ -33,7 +33,7 @@ function shade(hex, amount) {
 
 const WAX_BLOB = "M50 4.5 C66.5 3.5 84.5 13 91.5 30.5 C97.5 45 95.5 62.5 86 74.5 C92.5 77.5 94 82.5 92.5 85.5 C90.5 89 84 89 79.5 86.5 C70.5 94.5 57 98.5 44 95.5 C40.5 99 34.5 99.5 31.5 96 C28.5 92.5 30 87.5 33.5 84.5 C20.5 77.5 10 64 8.5 47.5 C7 31.5 15 15.5 29 8.5 C35.5 5.2 42.8 5 50 4.5 Z";
 
-const PORTRAIT = "/home/z/my-project/panda-messages/public/panda/d-center.png";
+const PORTRAIT = resolve("public/panda/d-center.png");
 
 for (const t of THEMES) {
   const base = t.seal;

@@ -661,7 +661,7 @@ function OutboxTab({ mails }: { mails: OutboxMail[] }) {
                 title={`Preview of ${m.subject}`}
                 srcDoc={m.html}
                 sandbox="allow-popups allow-popups-to-escape-sandbox"
-                className="mx-auto block h-[640px] w-full max-w-md rounded-2xl border border-ink/10 bg-white shadow-sm"
+                className="mx-auto block h-[760px] w-full max-w-md rounded-2xl border border-ink/10 bg-white shadow-sm sm:h-[840px]"
               />
             </div>
           )}
