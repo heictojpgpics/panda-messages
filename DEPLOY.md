@@ -125,6 +125,28 @@ npm install
 npm run cf:deploy
 ```
 
+### Cloudflare Workers Builds (Git integration)
+
+Workers Builds runs its **Build command** and **Deploy command** separately.
+The build must generate `.open-next/worker.js` before Wrangler deploys the
+wrapper in `worker-entry.ts`. In **Workers & Pages → panda-messages → Settings
+→ Builds**, configure the production branch with exactly one of these safe
+setups:
+
+| Build command | Deploy command |
+| --- | --- |
+| `npm run cf:build` | `npx wrangler deploy` |
+| *(leave empty)* | `npm run deploy` |
+
+Use the first setup for the clearest build log. Do not use a blank Build
+command together with `npx wrangler deploy`: that command alone cannot create
+the OpenNext output. Do not set `npm run cf:build` as the Build command and
+`npm run deploy` as the Deploy command together, because that builds twice.
+
+Use the same deployment command for preview builds only if a preview is meant
+to deploy the full worker; otherwise leave preview builds disabled until their
+runtime bindings and environment values are configured.
+
 The Worker has two private bindings in `wrangler.toml`:
 
 - `DB` points only to the `panda-messages` D1 database.
@@ -143,9 +165,10 @@ What is committed for this path:
 - `wrangler.toml` — entry, `nodejs_compat`, asset, D1 and R2 bindings,
   non-secret vars, the cron trigger and observability.
 
-`npx wrangler deploy --dry-run` compiles the whole worker locally and is
-a free sanity check before the real deploy (the bundle is about 7.6MB
-raw, 1.6MB gzipped).
+`npm run cf:build && npx wrangler deploy --dry-run` builds and validates the
+whole worker locally before a real deploy (the bundle is about 7.6MB raw,
+1.6MB gzipped). Running `wrangler deploy` alone from a clean checkout is not
+enough because the OpenNext output has not been generated yet.
 
 Secrets never go in the committed file:
 
