@@ -61,7 +61,7 @@ independently, with no code changes:
 
 | Capability | Default (mock) | Set these to go real |
 | --- | --- | --- |
-| Storage | local SQLite file | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `D1_DATABASE_ID` |
+| Storage | local SQLite file | native `DB` and `CARD_PHOTOS` Worker bindings; Cloudflare credentials are tooling-only |
 | Payments | simulated checkout | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` |
 | Email | demo outbox | `RESEND_API_KEY`, `EMAIL_FROM` |
 | Scheduled delivery | opportunistic tick | a cron hit on `/api/cron/deliveries` (+ `CRON_SECRET`) |
@@ -116,7 +116,7 @@ npm run dev         # develop
 npm run lint        # eslint
 npm run build       # strict types + production standalone build
 npm run start       # run the standalone build with plain node
-npm run db:init     # create tables on remote D1 (needs the D1 env vars)
+npm run cf:provision # verify D1, create/lock down R2, and migrate remote D1
 npm run db:status   # list every table with row counts, local or remote
 ```
 
