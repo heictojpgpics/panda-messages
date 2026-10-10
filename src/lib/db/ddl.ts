@@ -1,8 +1,8 @@
 /**
  * The physical tables. These statements are the single source of truth for
  * the schema: the local SQLite driver runs them on boot, and
- * `npm run db:init` (scripts/init-d1.mjs) reads this exact file and applies
- * them to a remote Cloudflare D1 database over the REST API.
+ * Local SQLite uses these statements on boot. Production D1 is initialized
+ * from the committed migrations in /migrations through Wrangler.
  *
  * Everything is CREATE ... IF NOT EXISTS, so re-running is always safe.
  * Column names here must match ./schema.ts one for one.
@@ -185,9 +185,8 @@ export const DDL: string[] = [
 /**
  * Additive column changes for databases created before a column existed.
  * Applied guarded (the column is added only when missing), by the local
- * driver on boot and by `npm run db:init` remotely, so re-running is
- * always safe. Keep entries forever: they are a no-op on fresh databases
- * and a repair on old ones.
+ * driver on boot. Keep entries forever: they are a no-op on fresh databases
+ * and a repair on old local databases.
  */
 export const COLUMN_MIGRATIONS: [string, string, string][] = [
   ["cards", "custom_occasion", "ALTER TABLE cards ADD COLUMN custom_occasion TEXT"],

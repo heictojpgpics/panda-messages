@@ -1,9 +1,24 @@
 # Deploying Panda Messages
 
-The production app runs as one Cloudflare Worker built by OpenNext. D1 and
-R2 are attached as private capability bindings, so the application never
-stores an account-wide Cloudflare API token. Copy `.env.example` to `.env`
-only for local Node development; it is not deployed configuration.
+The production app runs as one full-stack Cloudflare Worker built by
+OpenNext. D1 and R2 are attached as private capability bindings, so the
+application never stores an account-wide Cloudflare API token. Copy
+`.env.example` to `.env` only for local Node development and deployment
+tooling; it is not deployed configuration.
+
+## Deployment shape: why this is a Worker, not Pages
+
+Cloudflare Pages Functions can bind D1 and R2. That is the right design for
+a static site with a small `/functions` API. This repository is not that
+shape: it uses the Next.js App Router, dynamic route handlers, server-side
+rendering, an authorization-checked private-photo proxy, and a scheduled
+delivery handler. Cloudflare's current Next.js guidance sends that full-stack
+feature set to Workers, while Pages is for a static Next.js export.
+
+This is still one Cloudflare deployment: the Worker serves the site, API,
+cron trigger, D1 access and private R2 access under one domain. Do not move
+the Cloudflare management token into a runtime secret. `DB` and
+`CARD_PHOTOS` are native bindings, not credentials.
 
 Two supported development shapes:
 
@@ -33,14 +48,34 @@ directory).
 The Worker uses the `DB` binding declared in `wrangler.toml`. D1 access is
 private to this Worker and never crosses the public management API.
 
+Provision the database, private photo bucket, and committed schema migration
+with one explicit operator command:
+
 ```bash
-npx wrangler d1 create panda-messages
+npm run cf:provision
 ```
 
-- Create the tables (idempotent, safe to re-run):
+The command first verifies that the `database_id` already committed in
+`wrangler.toml` resolves to the expected `panda-messages` database. It fails
+closed if it does not, rather than creating a second empty database. It then
+ensures `panda-message-photos` exists, disables its `r2.dev` public URL,
+applies the committed D1 migration, repairs the two additive columns needed by
+legacy databases, and verifies the core tables. It requires
+`CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` only on the terminal or CI
+runner that executes it.
+
+To inspect the exact plan without reaching Cloudflare:
 
 ```bash
-npm run db:init
+npm run cf:provision -- --dry-run
+```
+
+For an intentionally new environment where the configured D1 database does
+not exist, add `--bootstrap`. This is explicit because pointing production at
+a new empty database by accident would lose access to live cards:
+
+```bash
+npm run cf:provision -- --bootstrap
 ```
 
 - Verify:
@@ -51,11 +86,13 @@ npm run db:status
 #   users 0 rows, cards 0 rows, ... Remote D1 is ready.
 ```
 
-`db:init` repairs the existing schema from `src/lib/db/ddl.ts`. New
-production databases should instead use the committed, versioned migration:
+`db:init` remains as a compatibility alias for applying the D1 migration.
+For all new environments prefer `cf:provision`, because it also verifies the
+bound D1 database and locks down the photo bucket. To apply only the
+committed migration:
 
 ```bash
-npx wrangler d1 migrations apply panda-messages --remote
+npm run cf:provision -- --migrate-only
 ```
 
 Wrangler records each migration, so CI can safely apply only migrations that
@@ -187,9 +224,9 @@ pipeline, no charge). The test card in Stripe test mode is
 | --- | --- | --- |
 | `NEXT_PUBLIC_SITE_URL` | recommended | absolute URL for emails, card links, sitemap |
 | `PANDA_STORAGE_MODE` | local only | set to `d1` only when testing the local simulated D1 binding |
-| `CLOUDFLARE_ACCOUNT_ID` | tooling only | deploy and schema migration account |
-| `CLOUDFLARE_API_TOKEN` | tooling only | deploy and schema migration credential, never a Worker secret |
-| `D1_DATABASE_ID` | tooling only | D1 schema migration target |
+| `CLOUDFLARE_ACCOUNT_ID` | tooling only | deploy and provisioning account |
+| `CLOUDFLARE_API_TOKEN` | tooling only | deploy and provisioning credential, never a Worker or Pages secret |
+| `D1_DATABASE_ID` | tooling only | operational reference; the runtime binding comes from `wrangler.toml` |
 | `SQLITE_PATH` | optional | local SQLite file location (default `db/panda.db`) |
 | `STRIPE_SECRET_KEY` | optional | live payments |
 | `STRIPE_WEBHOOK_SECRET` | optional | webhook signature verification |

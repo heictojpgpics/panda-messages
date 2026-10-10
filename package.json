@@ -8,6 +8,7 @@
     "cf:build": "rm -rf .open-next && opennextjs-cloudflare build",
     "cf:deploy": "npm run cf:build && wrangler deploy",
     "cf:preview": "npm run cf:build && wrangler dev .open-next/worker.js --local",
+    "cf:provision": "node scripts/provision-cloudflare.mjs",
     "email:preview": "tsx scripts/render-email-preview.ts artifacts/email-previews",
     "start": "node .next/standalone/server.js",
     "lint": "eslint .",
