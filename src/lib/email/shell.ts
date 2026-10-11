@@ -142,7 +142,7 @@ export function renderPandaEmail(opts: ShellOptions): string {
   const date = postmarkLine(opts.date);
 
   const heroRow = art
-    ? `<tr><td class="pm-hero" align="center" bgcolor="${p.wash}" style="padding:28px 0 14px;background:${p.wash};">
+    ? `<tr><td class="pm-hero" align="center" bgcolor="${p.paper}" style="padding:12px 0 8px;background:${p.paper};">
       <img class="pm-art" src="${escapeHtml(art.src)}" width="228" alt="${escapeHtml(art.alt)}" border="0" style="display:block;width:228px;max-width:100%;height:auto;margin:0 auto;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;">
     </td></tr>
     <tr><td style="padding:0;font-size:0;line-height:0;"><table role="presentation" border="0" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;"><tr><td style="border-top:1px dashed ${p.line};font-size:0;line-height:0;">&nbsp;</td></tr></table></td></tr>`
@@ -193,17 +193,17 @@ export function renderPandaEmail(opts: ShellOptions): string {
   <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="${p.page}" style="width:100%;background:${p.page};border-collapse:collapse;">
     <tr><td align="center" class="pm-outer" style="padding:28px 14px 36px;">
       <!--[if mso]><table role="presentation" width="600" align="center" border="0" cellpadding="0" cellspacing="0"><tr><td><![endif]-->
-      <table role="presentation" class="pm-card" width="600" border="0" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background:${p.paper};border:1px solid ${p.line};border-radius:16px;border-collapse:separate;overflow:hidden;">
+      <table role="presentation" class="pm-card" width="600" border="0" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background:${p.paper};border:5px solid ${p.heading};outline:1px solid ${p.line};outline-offset:-11px;border-radius:0;border-collapse:separate;overflow:hidden;">
 
         <!-- postal band: the flap side of the envelope -->
-        <tr><td class="pm-band" bgcolor="${p.band}" style="padding:16px 26px;background:${p.band};border-bottom:2px solid ${shade(p.band, -0.18)};">
+        <tr><td class="pm-band" bgcolor="${p.paper}" style="padding:28px 32px 4px;background:${p.paper};">
           <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;">
             <tr>
-              <td align="left" style="font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:2.6px;line-height:16px;color:${p.bandText};white-space:nowrap;">PANDA POST</td>
+              <td align="left" style="font-family:${SERIF};font-size:25px;font-weight:700;letter-spacing:3px;line-height:30px;color:${p.heading};white-space:nowrap;">PANDA POST</td>
               <td align="right" style="font-family:${SANS};font-size:0;line-height:0;">
                 <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-                  <tr><td style="padding:3px 9px;border:1px solid ${p.postmark};border-radius:4px;">
-                    <span style="font-family:${SANS};font-size:9px;font-weight:700;letter-spacing:1.6px;line-height:12px;color:${p.postmark};">FIRST CLASS<br>${date}</span>
+                  <tr><td style="padding:8px 8px;border:1px solid ${p.line};outline:1px dashed ${p.line};outline-offset:3px;">
+                    <span style="font-family:${SANS};font-size:9px;font-weight:700;letter-spacing:1.6px;line-height:12px;color:${p.heading};">FIRST<br>CLASS<br>${date}</span>
                   </td></tr>
                 </table>
               </td>
@@ -214,7 +214,7 @@ export function renderPandaEmail(opts: ShellOptions): string {
         ${heroRow}
 
         <!-- the letter -->
-        <tr><td class="pm-body" bgcolor="${p.paper}" style="padding:32px 46px 36px;background:${p.paper};font-family:${SANS};color:${p.ink};">
+        <tr><td class="pm-body" bgcolor="${p.paper}" style="padding:18px 46px 36px;background:${p.paper};font-family:${SANS};color:${p.ink};">
           ${opts.blocks}
           ${sealRow}
           ${ctaRow}
@@ -222,7 +222,7 @@ export function renderPandaEmail(opts: ShellOptions): string {
         </td></tr>
 
         <!-- footer -->
-        <tr><td class="pm-footer" bgcolor="${p.wash}" style="padding:22px 40px 26px;background:${p.wash};border-top:1px solid ${p.line};">
+        <tr><td class="pm-footer" bgcolor="${p.paper}" style="padding:22px 40px 26px;background:${p.paper};border-top:4px double ${p.line};">
           <p style="margin:0 0 6px;font-family:${SANS};font-size:10.5px;font-weight:700;letter-spacing:2px;line-height:15px;text-align:center;text-transform:uppercase;color:${p.footer};">Carried by Panda Messages</p>
           <p style="margin:0 0 10px;font-family:${SANS};font-size:12px;line-height:19px;text-align:center;color:${p.footer};">${escapeHtml(opts.footerWhy)}</p>
           <p style="margin:0;font-family:${SANS};font-size:11px;line-height:17px;text-align:center;color:${p.footer};">

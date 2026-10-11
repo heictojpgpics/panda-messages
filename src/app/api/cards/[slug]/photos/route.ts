@@ -34,7 +34,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     const proposed = Array.isArray(body.photos) ? body.photos : [];
     if (proposed.length > MAX_PHOTOS) return NextResponse.json({ error: "Up to 5 photos fit inside a card." }, { status: 400 });
 
-    const bucket = getCardPhotoBucket();
+    const bucket = await getCardPhotoBucket();
     if (!bucket) {
       return NextResponse.json({ error: "Private photo storage is not ready yet. Please try again shortly." }, { status: 503 });
     }

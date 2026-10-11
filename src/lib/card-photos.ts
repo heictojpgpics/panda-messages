@@ -59,10 +59,13 @@ export function cardPhotoUrl(slug: string, photo: CardPhotoValue, editToken?: st
   return editToken ? `${path}?editToken=${encodeURIComponent(editToken)}` : path;
 }
 
-export function getCardPhotoBucket(): R2Bucket | null {
+/** Resolve the capability binding from the active Workers request context.
+ * OpenNext requires the asynchronous context path in route handlers. */
+export async function getCardPhotoBucket(): Promise<R2Bucket | null> {
   try {
-    const env = getCloudflareContext().env as unknown as { CARD_PHOTOS?: R2Bucket };
-    const bucket = env.CARD_PHOTOS;
+    const { env } = await getCloudflareContext({ async: true });
+    const typedEnv = env as unknown as { CARD_PHOTOS?: R2Bucket };
+    const bucket = typedEnv.CARD_PHOTOS;
     return bucket ?? null;
   } catch {
     return null;

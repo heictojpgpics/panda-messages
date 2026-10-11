@@ -68,7 +68,12 @@ const ART: Record<ArtworkKey, { file: string; alt: string }> = {
 };
 
 export function emailArtwork(key: ArtworkKey) {
-  const art = ART[key];
+  const art = key === "christmas"
+    ? {
+        file: "v2/panda-postal-winter-640.png",
+        alt: "Panda postal carrier in a green winter uniform holding a sealed envelope",
+      }
+    : ART[key];
   return {
     src: `${siteUrl()}/panda/email/${art.file}`,
     alt: art.alt,
@@ -79,9 +84,10 @@ export function emailArtwork(key: ArtworkKey) {
 
 /** The theme's own wax seal, rendered from the site's exact seal artwork. */
 export function emailSeal(themeId?: string) {
-  const id = themeId ?? "bamboo-grove";
+  const rose = new Set(["rose-garden", "berry-kiss", "birthday-bash", "confetti-pop", "night-market", "midnight-velvet"]);
+  const file = rose.has(themeId ?? "") ? "v2/seal-rose-160.png" : "v2/seal-evergreen-160.png";
   return {
-    src: `${siteUrl()}/panda/email/seals/seal-${id}.png`,
+    src: `${siteUrl()}/panda/email/${file}`,
     alt: "A wax seal stamped with a panda",
     width: 128,
     height: 128,

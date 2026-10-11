@@ -219,7 +219,11 @@ export function Wizard() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ editToken: card.editToken, photos: draft.photos }),
     });
-    if (res.ok) return true;
+    if (res.ok) {
+      const body = await res.json().catch(() => ({}));
+      if (Array.isArray(body.photos)) set("photos", body.photos);
+      return true;
+    }
     const body = await res.json().catch(() => ({}));
     toast(body.error ?? "Panda could not save the photos.");
     return false;

@@ -21,7 +21,7 @@ export async function GET(
 
   const photo = parseCardPhotos(card.photos).find((item) => isStoredCardPhoto(item) && item.id === photoId);
   if (!photo || !isStoredCardPhoto(photo)) return NextResponse.json({ error: "Photo not found." }, { status: 404 });
-  const bucket = getCardPhotoBucket();
+  const bucket = await getCardPhotoBucket();
   if (!bucket) return NextResponse.json({ error: "Photo storage is unavailable." }, { status: 503 });
   const object = await bucket.get(photo.key);
   if (!object) return NextResponse.json({ error: "Photo not found." }, { status: 404 });
