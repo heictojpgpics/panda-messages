@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Inter } from "next/font/google";
+import { Fraunces, Inter, Caveat } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -12,6 +12,13 @@ const fraunces = Fraunces({
 
 const inter = Inter({
   variable: "--font-inter",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+/** A hand-inked script, used for the signature on the letter. */
+const caveat = Caveat({
+  variable: "--font-caveat",
   subsets: ["latin"],
   display: "swap",
 });
@@ -78,7 +85,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
       <body
-        className={`${fraunces.variable} ${inter.variable} antialiased bg-background text-foreground font-sans`}
+        className={`${fraunces.variable} ${inter.variable} ${caveat.variable} antialiased bg-background text-foreground font-sans`}
       >
         {children}
         <Toaster position="bottom-center" richColors={false} closeButton />

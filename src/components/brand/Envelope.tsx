@@ -305,6 +305,8 @@ interface EnvelopeProps {
   width?: number;
   /** Personalizes the address block and the letter peeking out. */
   recipientName?: string;
+  /** Hides the pocket letter (the real letter has taken over above). */
+  letterHidden?: boolean;
   children?: React.ReactNode;
 }
 
@@ -315,6 +317,7 @@ export function Envelope({
   className,
   width = 320,
   recipientName,
+  letterHidden = false,
   children,
 }: EnvelopeProps) {
   const reduce = useReducedMotion();
@@ -471,7 +474,9 @@ export function Envelope({
 
           {/* ---------- the letter ---------- */}
           {/* Rests fully inside, its top edge just visible in the dark
-              mouth. Climbs with friction, overshoots a hair, settles. */}
+              mouth. Climbs with friction, overshoots a hair, settles.
+              Once the real letter has risen out and been taken by the
+              scene, the pocket stands empty. */}
           <motion.div
             className="absolute left-1/2"
             style={{
@@ -483,11 +488,14 @@ export function Envelope({
             }}
             initial={false}
             animate={
-              rising
+              letterHidden
+                ? { opacity: 0 }
+                : rising
                 ? {
                     y: [0, -height * 0.5, -height * 0.92, -height * 0.885],
                     rotate: [0, -1.6, -1.1],
                     scale: [0.99, 1.018, 1.012],
+                    opacity: 1,
                     boxShadow: [
                       "0 1px 3px -1px rgba(22,36,28,0.3)",
                       "0 4px 12px -4px rgba(22,36,28,0.34)",
@@ -499,11 +507,14 @@ export function Envelope({
                     y: 0,
                     rotate: 0,
                     scale: 0.99,
+                    opacity: 1,
                     boxShadow: "0 1px 3px -1px rgba(22,36,28,0.3)",
                   }
             }
             transition={
-              rising
+              letterHidden
+                ? { duration: 0.22 * pace, ease: "easeOut" }
+                : rising
                 ? {
                     duration: 1.01 * pace,
                     times: [0, 0.5, 0.84, 1],
