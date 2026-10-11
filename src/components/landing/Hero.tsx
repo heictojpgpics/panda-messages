@@ -178,8 +178,11 @@ export function Hero() {
         ))}
       </div>
 
-      <div className="relative mx-auto max-w-6xl px-4 sm:px-6 pt-20 sm:pt-24 pb-16">
-        <div className="grid lg:grid-cols-[1.05fr_0.85fr] gap-12 lg:gap-8 items-center">
+      <div className="relative mx-auto max-w-6xl px-4 pb-16 pt-12 sm:px-6 sm:pt-16 lg:pt-20">
+        {/* Mobile: the phone demo rides high, right under the pitch, so the
+            product is seen before the picker asks anything. Desktop keeps
+            the two-column arrangement. */}
+        <div className="grid gap-10 lg:grid-cols-[1.05fr_0.85fr] lg:items-center lg:gap-8">
           {/* Left: the pitch */}
           <div className="text-center lg:text-left">
             <motion.p
@@ -212,6 +215,21 @@ export function Hero() {
               little card for you, right on the day. They open it like a gift. There is
               usually a happy cry.
             </motion.p>
+
+            {/* The demo, on a phone it comes right after the pitch */}
+            <div className="relative order-none mt-8 lg:hidden">
+              <PhoneMock tilt={2} scale={0.92}>
+                <ExampleCarousel />
+              </PhoneMock>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.8 }}
+                className="mt-4 text-center text-[12px] text-ink/45"
+              >
+                This lands in their inbox. <span className="text-jade font-semibold">They tap, it opens, they melt.</span>
+              </motion.p>
+            </div>
 
             {/* Occasion picker */}
             <motion.div
@@ -343,8 +361,8 @@ export function Hero() {
             </motion.div>
           </div>
 
-          {/* Right: the card, as it arrives */}
-          <div className="relative">
+          {/* Right: on desktop, the card as it arrives */}
+          <div className="relative hidden lg:block">
             <div
               className="absolute -inset-8 rounded-[3rem] pointer-events-none"
               style={{

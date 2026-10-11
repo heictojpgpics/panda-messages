@@ -1,25 +1,22 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
 import type { Theme } from "@/data/themes";
+import { shade } from "./ThemeScene";
 
 /**
  * The air around the moment.
  *
- * Two systems live here:
+ *   OpeningBurst        the one-shot celebration when the letter rises:
+ *                       theme-colored vector confetti with flutter,
+ *                       hand-picked occasion glyphs, and little stars, in
+ *                       three choreographed waves
  *
- *  OpeningBurst  the one-shot celebration when the letter rises, a mix of
- *                theme-colored confetti, hand-picked occasion glyphs and
- *                tiny stars, in three choreographed waves.
+ *   LetterFloatAccents  the quiet crown above the presented letter: two
+ *                       hearts, a sparkle and a tiny photo, bobbing
  *
- *  AmbientDrift  the slow weather of the card view: theme motifs falling
- *                in three depth layers, swaying like real paper, masked
- *                away from the page header so nothing ever crowds the
- *                brand bar.
- *
- * Both are deterministic: seeded values, identical on server and client,
- * no hydration flicker, no Math.random in render.
+ * Everything is deterministic: seeded values, identical on server and
+ * client, no hydration flicker, no Math.random in render.
  */
 
 const prand = (seed: number) => {
@@ -27,9 +24,6 @@ const prand = (seed: number) => {
   return x - Math.floor(x);
 };
 
-/** Quantize to 2 decimals. Server-side rendering rounds inline style
- * floats at 6 significant digits; without this, values like
- * 49.546173509414075% hydrate against 49.5462% and React cries. */
 const q = (v: number) => Math.round(v * 100) / 100;
 
 /* ------------------------------------------------------------------ */
@@ -86,7 +80,6 @@ function seasonalMotifs(now: Date, occasionId?: string): string[] {
   const winter = m === 11 || (m === 0 && d <= 6); // late Dec into Twelfth Night
   const strongOccasion = Boolean(occasionId && OCCASION_MOTIFS[occasionId]);
   if (strongOccasion) {
-    // the occasion agrees with the season, let them mix
     if (winter && occasionId === "christmas") return ["❄️"];
     if (m === 1 && occasionId === "valentines") return ["💗"];
     return [];
@@ -110,7 +103,7 @@ export function motifsFor(occasionId: string | undefined, theme: Theme, now = ne
 
 interface BurstPiece {
   key: string;
-  kind: "confetti" | "glyph" | "star";
+  kind: "confetti" | "heart" | "glyph" | "star";
   x: number; // end offset from center, px
   y: number;
   rotate: number;
@@ -122,9 +115,29 @@ interface BurstPiece {
   size: number;
 }
 
+/** A small paper heart for the burst waves. */
+function BurstHeart({ color, size }: { color: string; size: number }) {
+  return (
+    <svg viewBox="0 0 24 22" width={size} height={size * 0.92} aria-hidden>
+      <path
+        d="M12 20.4 C6.2 15.6, 2.2 11.9, 2.2 7.6 C2.2 4.3, 4.8 2, 7.6 2 C9.5 2, 11.1 3, 12 4.7 C12.9 3, 14.5 2, 16.4 2 C19.2 2, 21.8 4.3, 21.8 7.6 C21.8 11.9, 17.8 15.6, 12 20.4 Z"
+        fill={color}
+      />
+      <path
+        d="M7 5.6 C8.6 5.2, 9.8 6.2, 10.2 7.4"
+        fill="none"
+        stroke="rgba(255,255,255,0.55)"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 /**
- * Three waves: confetti flies, the occasion's glyphs pop, then a few
- * slow pieces drift down like the ceiling gave up its decorations.
+ * Three waves: confetti flies with a paper flutter, small hearts rise
+ * like bubbles, the occasion's glyphs pop, then a few slow pieces drift
+ * down like the ceiling gave up its decorations.
  */
 export function OpeningBurst({
   motif,
@@ -137,27 +150,42 @@ export function OpeningBurst({
   reduce: boolean;
   origin?: { x: string; y: string };
 }) {
-  // Seeded values, computed in place: identical on server and client, so
-  // there is nothing to synchronize and no hydration flicker. Cheap too,
-  // a few dozen small objects.
-  const palette = [theme.colors.seal, theme.colors.heading, theme.colors.flap, "#C9A227"];
+  const palette = [
+    theme.colors.seal,
+    shade(theme.colors.seal, 0.3),
+    theme.colors.heading,
+    shade(theme.colors.flap, 0.2),
+  ];
   const pieces: BurstPiece[] = (() => {
-    const wave1: BurstPiece[] = Array.from({ length: 16 }, (_, i) => {
+    const wave1: BurstPiece[] = Array.from({ length: 18 }, (_, i) => {
       const angle = prand(i * 11 + 3) * Math.PI * 2;
-      const dist = 90 + prand(i * 7 + 1) * 150;
+      const dist = 100 + prand(i * 7 + 1) * 170;
       return {
         key: `c${i}`,
         kind: "confetti",
         x: q(Math.cos(angle) * dist),
-        y: q(Math.sin(angle) * dist * 0.82 + 60 + prand(i * 5) * 70),
-        rotate: q((prand(i * 13 + 9) - 0.5) * 720),
+        y: q(Math.sin(angle) * dist * 0.82 + 60 + prand(i * 5) * 80),
+        rotate: q((prand(i * 13 + 9) - 0.5) * 760),
         scale: q(0.7 + prand(i * 17 + 4) * 0.7),
-        delay: q(0.22 + prand(i * 3 + 6) * 0.08),
+        delay: q(0.2 + prand(i * 3 + 6) * 0.1),
         duration: q(1.05 + prand(i * 19 + 2) * 0.35),
         color: palette[i % palette.length],
-        size: q(5 + prand(i * 23 + 8) * 5),
+        size: q(6 + prand(i * 23 + 8) * 6),
       };
     });
+    // a handful of hearts rising from the letter, like the reader's
+    const waveHearts: BurstPiece[] = Array.from({ length: 6 }, (_, i) => ({
+      key: `h${i}`,
+      kind: "heart",
+      x: q((prand(i * 29 + 13) - 0.5) * 240),
+      y: q(-130 - prand(i * 31 + 7) * 130),
+      rotate: q((prand(i * 37 + 3) - 0.5) * 36),
+      scale: q(0.75 + prand(i * 41 + 5) * 0.55),
+      delay: q(0.34 + prand(i * 43 + 1) * 0.28),
+      duration: q(1.5 + prand(i * 47 + 2) * 0.5),
+      color: palette[i % palette.length],
+      size: q(13 + prand(i * 53 + 6) * 9),
+    }));
     const wave2: BurstPiece[] = motif.slice(0, 3).map((glyph, i) => ({
       key: `g${i}`,
       kind: "glyph",
@@ -182,7 +210,7 @@ export function OpeningBurst({
       size: q(9 + prand(i * 79 + 6) * 7),
       color: palette[(i + 1) % palette.length],
     }));
-    return [...wave1, ...wave2, ...wave3];
+    return [...wave1, ...waveHearts, ...wave2, ...wave3];
   })();
 
   if (reduce || !pieces) return null;
@@ -214,6 +242,17 @@ export function OpeningBurst({
               }}
               transition={{ duration: p.duration, delay: p.delay, times: [0, 0.16, 0.62, 1], ease: [0.1, 0.74, 0.24, 1] }}
             />
+          ) : p.kind === "heart" ? (
+            <motion.span
+              key={p.key}
+              className="absolute block"
+              style={{ left: -p.size / 2, top: -p.size / 2, filter: "drop-shadow(0 3px 6px rgba(22,36,28,0.18))" }}
+              initial={{ opacity: 0, y: 0, scale: 0.3 }}
+              animate={{ opacity: [0, 0.95, 0.85, 0], y: [0, p.y * 0.55, p.y], scale: [0.3, p.scale, p.scale * 0.92], x: [0, p.x * 0.5, p.x], rotate: [0, p.rotate] }}
+              transition={{ duration: p.duration, delay: p.delay, times: [0, 0.3, 0.72, 1], ease: [0.17, 0.84, 0.3, 1] }}
+            >
+              <BurstHeart color={p.color ?? theme.colors.seal} size={p.size} />
+            </motion.span>
           ) : p.kind === "glyph" ? (
             <motion.span
               key={p.key}
@@ -248,98 +287,49 @@ export function OpeningBurst({
 }
 
 /* ------------------------------------------------------------------ */
-/* Ambient drift                                                       */
+/* The crown of little things above the presented letter               */
 /* ------------------------------------------------------------------ */
 
-interface DriftPiece {
-  key: string;
-  glyph: string;
-  left: number; // %
-  size: number; // px
-  depth: 0 | 1 | 2; // far, mid, near
-  duration: number; // s
-  delay: number; // s (negative to distribute mid-flight)
-  sway: number; // px amplitude
-  swayDuration: number;
-  rotate: number; // deg
-}
-
 /**
- * Falling motifs in three depths. The whole layer is masked top and
- * bottom: pieces materialize well below the page header and dissolve
- * before the fold, so the brand pill always sits in clean air. Mobile
- * density is handled by CSS (fewer pieces shown), not JS.
+ * While the letter is held up, a few soft glyphs bob above its top edge:
+ * two hearts, a sparkle, a tiny photo. The reader's feelings, arriving
+ * before they have words.
  */
-export function AmbientDrift({
-  motif,
-  reduce,
-  count,
-}: {
-  motif: string[];
-  reduce: boolean;
-  count?: number;
-}) {
-  const total = count ?? 18;
-  // Stratified phases: piece i starts (i / total + jitter) into its fall, so
-  // the very first painted frame already shows pieces at every height.
-  // Random delays alone clump (measured gaps up to 26% of the cycle), which
-  // reads as particles pouring from the top instead of falling weather.
-  const pieces: DriftPiece[] = Array.from({ length: total }, (_, i) => {
-    const depth = (i % 3) as 0 | 1 | 2;
-    const size = [13, 17, 24][depth] + prand(i * 29 + 2) * [5, 6, 8][depth];
-    const duration = q([26, 20, 15][depth] + prand(i * 37 + 3) * 8);
-    const phase = i / total + prand(i * 41 + 1) * (0.6 / total);
-    return {
-      key: `d${i}`,
-      glyph: motif[i % motif.length],
-      left: q(((i * 61) % 97) / 97 * 92 + 2 + prand(i * 43 + 9) * 4),
-      depth,
-      size: q(size),
-      duration,
-      delay: q(-phase * duration),
-      sway: q(14 + prand(i * 43 + 5) * 26),
-      swayDuration: q(3.4 + prand(i * 47 + 2) * 2.8),
-      rotate: q((prand(i * 53 + 4) - 0.5) * 70),
-    };
-  });
-
-  if (reduce || !pieces) return null;
-
+export function LetterFloatAccents({ theme, reduce }: { theme: Theme; reduce: boolean }) {
+  const accents = [
+    { glyph: "💛", x: -86, y: -46, size: 19, delay: 0.1, dur: 3.4 },
+    { glyph: "✨", x: -34, y: -78, size: 16, delay: 0.55, dur: 3.0 },
+    { glyph: "📸", x: 40, y: -64, size: 18, delay: 0.32, dur: 3.8 },
+    { glyph: "💚", x: 92, y: -36, size: 20, delay: 0.78, dur: 3.2 },
+  ];
   return (
-    <div
-      className="pointer-events-none fixed inset-0 z-[5] overflow-hidden drift-mask"
-      aria-hidden
-    >
-      {pieces.map((p, i) => (
-        <span
-          key={p.key}
-          className={cn("drift-fall absolute top-0 will-change-transform", i >= 11 && "max-sm:hidden")}
-          style={
-            {
-              left: `${p.left}%`,
-              fontSize: p.size,
-              animationDuration: `${p.duration}s`,
-              animationDelay: `${p.delay}s`,
-              // depth: farther pieces are dimmer, the nearest ones softly out of focus
-              opacity: [0.16, 0.3, 0.44][p.depth],
-              filter: p.depth === 2 ? "blur(1.1px)" : p.depth === 0 ? "blur(0.4px)" : undefined,
-            } as React.CSSProperties
+    <div className="pointer-events-none absolute inset-x-0 flex justify-center" aria-hidden>
+      {accents.map((a, i) => (
+        <motion.span
+          key={i}
+          className="absolute select-none"
+          style={{
+            fontSize: a.size,
+            left: `calc(50% + ${a.x}px)`,
+            top: a.y,
+            filter: "drop-shadow(0 4px 8px rgba(22,36,28,0.16))",
+          }}
+          initial={{ opacity: 0, y: a.y + 14, scale: 0.4 }}
+          animate={
+            reduce
+              ? { opacity: 0.9, y: a.y, scale: 1 }
+              : { opacity: [0, 0.95, 0.95], y: [a.y + 14, a.y, a.y - 8, a.y], scale: [0.4, 1, 1] }
           }
+          transition={{
+            duration: reduce ? 0.4 : a.dur,
+            delay: reduce ? 0 : a.delay,
+            repeat: reduce ? 0 : Infinity,
+            repeatType: "mirror",
+            ease: "easeInOut",
+          }}
         >
-          <span
-            className="drift-sway inline-block will-change-transform"
-            style={
-              {
-                "--sway": `${p.sway}px`,
-                "--sway-duration": `${p.swayDuration}s`,
-                "--rotate": `${p.rotate}deg`,
-                animationDelay: `${q(-prand(p.duration * 13) * 4)}s`,
-              } as React.CSSProperties
-            }
-          >
-            {p.glyph}
-          </span>
-        </span>
+          {a.glyph}
+        </motion.span>
       ))}
     </div>
   );

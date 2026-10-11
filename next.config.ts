@@ -41,6 +41,9 @@ const nextConfig: NextConfig = {
   output: "standalone",
   reactStrictMode: false,
   serverExternalPackages: ["better-sqlite3"],
+  // Local automation hits the dev server via 127.0.0.1; without this the
+  // dev HMR socket is blocked as cross-origin and hydration never starts.
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
   // The repo ships two lockfiles (bun and npm). Pin the workspace root so
   // Turbopack never has to guess it from the lockfile layout.
   turbopack: {
