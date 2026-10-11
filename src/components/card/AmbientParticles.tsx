@@ -279,18 +279,24 @@ export function AmbientDrift({
   reduce: boolean;
   count?: number;
 }) {
-  const total = count ?? 16;
+  const total = count ?? 18;
+  // Stratified phases: piece i starts (i / total + jitter) into its fall, so
+  // the very first painted frame already shows pieces at every height.
+  // Random delays alone clump (measured gaps up to 26% of the cycle), which
+  // reads as particles pouring from the top instead of falling weather.
   const pieces: DriftPiece[] = Array.from({ length: total }, (_, i) => {
     const depth = (i % 3) as 0 | 1 | 2;
     const size = [13, 17, 24][depth] + prand(i * 29 + 2) * [5, 6, 8][depth];
+    const duration = q([26, 20, 15][depth] + prand(i * 37 + 3) * 8);
+    const phase = i / total + prand(i * 41 + 1) * (0.6 / total);
     return {
       key: `d${i}`,
       glyph: motif[i % motif.length],
-      left: q(prand(i * 31 + 7) * 92 + 2),
+      left: q(((i * 61) % 97) / 97 * 92 + 2 + prand(i * 43 + 9) * 4),
       depth,
       size: q(size),
-      duration: q([26, 20, 15][depth] + prand(i * 37 + 3) * 8),
-      delay: q(-prand(i * 41 + 1) * 22),
+      duration,
+      delay: q(-phase * duration),
       sway: q(14 + prand(i * 43 + 5) * 26),
       swayDuration: q(3.4 + prand(i * 47 + 2) * 2.8),
       rotate: q((prand(i * 53 + 4) - 0.5) * 70),

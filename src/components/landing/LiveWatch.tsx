@@ -92,7 +92,7 @@ export function LiveWatch() {
                         : "bg-jade-soft text-jade"
                   )}
                 >
-                  {phase === "scheduled" ? "on its way" : phase}
+                  {phase === "scheduled" ? "sealed and waiting" : phase}
                 </span>
               </div>
 

@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { occasionLabel } from "@/data/occasions";
-import { SITE } from "@/lib/config";
+import { PACKS } from "@/lib/config";
 import { toast } from "sonner";
 import { readEditToken } from "@/stores/card-memory";
 import { Lock, CreditCard, Calendar, Sparkles, ArrowRight, Check, Mail } from "lucide-react";
@@ -27,6 +27,9 @@ interface CardInfo {
   theme: string;
   songId: string | null;
   photoCount: number;
+  packId: string | null;
+  batchCount: number;
+  batchRecipients: string[] | null;
 }
 
 type Phase = "pay" | "processing" | "done";
@@ -95,7 +98,7 @@ export default function CheckoutPage() {
       const res = await fetch("/api/checkout/mock-complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cardId, email, name, editToken }),
+        body: JSON.stringify({ cardId, email, name, editToken, packId: card?.packId ?? "single" }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -207,12 +210,16 @@ export default function CheckoutPage() {
                 <div className="mt-3 flex items-start justify-between gap-4">
                   <div>
                     <p className="font-display font-semibold text-ink text-[17px]">
-                      For {card?.recipientName ?? "..."}, from {card?.senderName ?? "..."}
+                      {(card?.batchCount ?? 1) > 1
+                        ? `${card?.batchCount} cards, one for each of them`
+                        : `For ${card?.recipientName ?? "..."}, from ${card?.senderName ?? "..."}`}
                     </p>
                     <p className="text-[12.5px] text-ink/55 mt-1">
-                      {card ? occasionLabel(card.occasion) : ""} · no watermark · all themes
+                      {(card?.batchCount ?? 1) > 1
+                        ? (card?.batchRecipients ?? []).join(", ")
+                        : `${card ? occasionLabel(card.occasion) : ""} · no watermark · all themes`}
                       {card?.songId ? " · their song" : ""}
-                      {card?.photoCount ? ` · ${card.photoCount} photos` : ""}
+                      {(card?.batchCount ?? 1) === 1 && card?.photoCount ? ` · ${card.photoCount} photos` : ""}
                     </p>
                     {card?.deliverAt && (
                       <p className="text-[12.5px] text-ink/55">
@@ -224,12 +231,21 @@ export default function CheckoutPage() {
                         in the morning
                       </p>
                     )}
-                    {card?.recipientEmail && (
+                    {(card?.batchCount ?? 1) === 1 && card?.recipientEmail && (
                       <p className="text-[12.5px] text-ink/55">to {card.recipientEmail}</p>
                     )}
                   </div>
-                  <p className="font-display font-semibold text-ink text-[22px] whitespace-nowrap">{SITE.cardPriceLabel}</p>
+                  <p className="font-display font-semibold text-ink text-[22px] whitespace-nowrap">
+                    ${PACKS.find((p) => p.id === card?.packId)?.price ?? PACKS[0].price}
+                  </p>
                 </div>
+                {card?.packId && card.packId !== "single" && (
+                  <p className="mt-2 text-[11.5px] text-ink/50 leading-relaxed">
+                    {PACKS.find((p) => p.id === card.packId)?.cards} card credits land on your
+                    account. This send spends {(card?.batchCount ?? 1)} of them; the rest wait for
+                    the next moment.
+                  </p>
+                )}
               </div>
 
               {/* Payment form */}
@@ -325,7 +341,7 @@ export default function CheckoutPage() {
                   ) : (
                     <>
                       <Lock className="h-4 w-4" />
-                      Pay $4.99
+                      Pay now
                     </>
                   )}
                 </Button>

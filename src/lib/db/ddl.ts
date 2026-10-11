@@ -71,6 +71,8 @@ export const DDL: string[] = [
     status TEXT NOT NULL DEFAULT 'draft',
     watermark INTEGER NOT NULL DEFAULT 1,
     reply_to_card_id TEXT,
+    batch_id TEXT,
+    pack_id TEXT,
     view_count INTEGER NOT NULL DEFAULT 0,
     opened_at TEXT,
     paid_at TEXT,
@@ -93,6 +95,24 @@ export const DDL: string[] = [
   `,
   `
   CREATE INDEX IF NOT EXISTS cards_reply_idx ON cards (reply_to_card_id)
+  `,
+  `
+  CREATE INDEX IF NOT EXISTS cards_batch_idx ON cards (batch_id)
+  `,
+  `
+  CREATE TABLE IF NOT EXISTS purchases (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    pack_id TEXT NOT NULL,
+    cards_included INTEGER NOT NULL,
+    price_cents INTEGER NOT NULL,
+    payment_ref TEXT,
+    provider TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  )
+  `,
+  `
+  CREATE INDEX IF NOT EXISTS purchases_user_idx ON purchases (user_id)
   `,
   `
   CREATE TABLE IF NOT EXISTS card_events (
@@ -191,4 +211,7 @@ export const DDL: string[] = [
 export const COLUMN_MIGRATIONS: [string, string, string][] = [
   ["cards", "custom_occasion", "ALTER TABLE cards ADD COLUMN custom_occasion TEXT"],
   ["cards", "reply_to_card_id", "ALTER TABLE cards ADD COLUMN reply_to_card_id TEXT"],
+  ["cards", "batch_id", "ALTER TABLE cards ADD COLUMN batch_id TEXT"],
+  ["cards", "pack_id", "ALTER TABLE cards ADD COLUMN pack_id TEXT"],
+  ["users", "credits", "ALTER TABLE users ADD COLUMN credits INTEGER NOT NULL DEFAULT 0"],
 ];

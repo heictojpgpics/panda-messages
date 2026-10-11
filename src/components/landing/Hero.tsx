@@ -8,7 +8,6 @@ import { OCCASIONS } from "@/data/occasions";
 import { cn } from "@/lib/utils";
 import { Sparkles, PencilLine, ChevronDown } from "lucide-react";
 import { PhoneMock, MiniCard } from "@/components/brand/MiniCard";
-import { PandaMoodFace, type PandaMood } from "@/components/brand/PandaMood";
 
 const EXAMPLES = [
   {
@@ -73,7 +72,22 @@ const EXAMPLES = [
   },
 ];
 
-const HERO_PORTRAITS: PandaMood[] = ["bamboo", "flowers", "sun", "confetti", "lantern"];
+/** Ambient leaves and sparkles. Delays are negative so the sky is full
+ *  from the first frame: pieces start mid-fall at every height instead of
+ *  pouring in from the top edge one after another. */
+const DRIFT_PIECES = Array.from({ length: 10 }, (_, i) => {
+  const duration = 20 + ((i * 7) % 11); // 20-30s, spread by construction
+  const phase = i / 10 + ((i * 13) % 7) / 70; // even slot + small jitter
+  return {
+    l: `${2 + ((i * 37) % 94)}%`,
+    d: `${duration}s`,
+    delay: `${-(phase * duration).toFixed(1)}s`,
+    e: ["🍃", "💚", "🍃", "✨", "💚", "🍃", "✨", "💚", "🍃", "✨"][i],
+    s: 8 + ((i * 5) % 8),
+    o: 0.22 + ((i * 3) % 5) / 25,
+    x: `${((i * 29) % 100) - 50}px`,
+  };
+});
 
 function ExampleCarousel() {
   const [i, setI] = useState(0);
@@ -122,7 +136,6 @@ export function Hero() {
   const [tab, setTab] = useState<"any" | "special">("any");
   const [expanded, setExpanded] = useState(false);
   const [custom, setCustom] = useState("");
-  const [portrait, setPortrait] = useState(0);
 
   const list = useMemo(() => {
     const base = OCCASIONS.filter((o) => o.category === tab);
@@ -142,20 +155,12 @@ export function Hero() {
     const text = custom.trim().slice(0, 60);
     router.push(text ? `/create?custom=${encodeURIComponent(text)}` : "/create");
   };
-  const switchPortrait = () => setPortrait((current) => (current + 1) % HERO_PORTRAITS.length);
 
   return (
     <section className="relative overflow-hidden hero-forest grain">
       {/* Ambient drifting leaves */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
-        {[
-          { l: "6%", d: "22s", e: "🍃", s: 15, o: 0.35, x: "40px" },
-          { l: "18%", d: "28s", e: "💚", s: 12, o: 0.3, x: "-30px", delay: "3s" },
-          { l: "42%", d: "24s", e: "🍃", s: 10, o: 0.25, x: "60px", delay: "8s" },
-          { l: "64%", d: "30s", e: "✨", s: 9, o: 0.4, x: "-50px", delay: "5s" },
-          { l: "82%", d: "26s", e: "💚", s: 11, o: 0.28, x: "30px", delay: "11s" },
-          { l: "92%", d: "32s", e: "✨", s: 8, o: 0.3, x: "-40px", delay: "2s" },
-        ].map((p, i) => (
+        {DRIFT_PIECES.map((p, i) => (
           <span
             key={i}
             className="drift-piece absolute top-0"
@@ -173,43 +178,7 @@ export function Hero() {
         ))}
       </div>
 
-      <div className="relative mx-auto max-w-6xl px-4 sm:px-6 pt-28 sm:pt-32 pb-16">
-        {/* A small wardrobe of hand-painted delivery portraits, not a repeated stock mascot. */}
-        <div className="flex justify-center mb-2">
-          <motion.button
-            type="button"
-            onClick={switchPortrait}
-            aria-label="Give Panda a different outfit"
-            title="Panda packed a few outfits. Tap to see one."
-            initial={{ opacity: 0, y: -12, scale: 0.8 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ delay: 0.15, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            whileTap={{ scale: 0.94, rotate: -3 }}
-            className="group relative rounded-full p-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-jade/55 focus-visible:ring-offset-4"
-          >
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.span
-                key={HERO_PORTRAITS[portrait]}
-                initial={{ opacity: 0, scale: 0.78, rotate: -6 }}
-                animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                exit={{ opacity: 0, scale: 0.84, rotate: 6 }}
-                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                className="block"
-              >
-                <PandaMoodFace
-                  mood={HERO_PORTRAITS[portrait]}
-                  size={126}
-                  alt="Panda, your card deliverer"
-                  className="drop-shadow-[0_10px_24px_rgba(22,36,28,0.25)]"
-                />
-              </motion.span>
-            </AnimatePresence>
-            <span className="pointer-events-none absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-ink/80 px-2.5 py-1 text-[10px] font-medium text-white opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-              new outfit
-            </span>
-          </motion.button>
-        </div>
-
+      <div className="relative mx-auto max-w-6xl px-4 sm:px-6 pt-20 sm:pt-24 pb-16">
         <div className="grid lg:grid-cols-[1.05fr_0.85fr] gap-12 lg:gap-8 items-center">
           {/* Left: the pitch */}
           <div className="text-center lg:text-left">
@@ -253,9 +222,9 @@ export function Hero() {
             >
               <p className="text-[13px] text-ink/60 mb-3">
                 Tell Panda the occasion:{" "}
-                <Link href="/#pricing" className="text-jade font-semibold link-pretty">
-                  making a card is free
-                </Link>{" "}
+                <span className="text-jade font-semibold">
+                  making and previewing is free
+                </span>{" "}
                 💚
               </p>
 
@@ -369,7 +338,7 @@ export function Hero() {
                 Surprise me
               </button>
               <p className="mt-2.5 text-center text-[11.5px] italic text-ink/40">
-                Free to make · takes about a minute
+                Free to make and preview · about a minute
               </p>
             </motion.div>
           </div>

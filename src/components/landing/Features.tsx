@@ -83,9 +83,9 @@ export function Features() {
         </div>
 
         <p className="mt-8 text-center text-[13px] text-ink/55">
-          Songs, photos and themes come with the full card.{" "}
+          Songs, photos and themes come with every card.{" "}
           <Link href="/#pricing" className="text-jade font-semibold link-pretty">
-            See what $4.99 gets you
+            Packs start at $5
           </Link>
         </p>
       </div>

@@ -14,6 +14,8 @@ export const users = sqliteTable("users", {
   email: text("email").notNull(),
   passwordHash: text("password_hash"),
   name: text("name"),
+  /** Unused paid sends, bought as packs and spent one per card. */
+  credits: integer("credits").notNull().default(0),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 }, (t) => [
@@ -65,6 +67,10 @@ export const cards = sqliteTable("cards", {
   status: text("status").notNull().default("draft"),
   watermark: integer("watermark", { mode: "boolean" }).notNull().default(true),
   replyToCardId: text("reply_to_card_id"),
+  /** Cards born in one bulk send share a batch id. */
+  batchId: text("batch_id"),
+  /** The pack that paid for this card, for receipts and analytics. */
+  packId: text("pack_id"),
   viewCount: integer("view_count").notNull().default(0),
   openedAt: text("opened_at"),
   paidAt: text("paid_at"),
@@ -79,6 +85,7 @@ export const cards = sqliteTable("cards", {
   index("cards_user_idx").on(t.userId),
   index("cards_delivery_idx").on(t.status, t.deliverAt),
   index("cards_reply_idx").on(t.replyToCardId),
+  index("cards_batch_idx").on(t.batchId),
 ]);
 
 export const cardEvents = sqliteTable("card_events", {
@@ -121,6 +128,19 @@ export const rateLimits = sqliteTable("rate_limits", {
   uniqueIndex("rate_limits_key_key").on(t.key),
 ]);
 
+export const purchases = sqliteTable("purchases", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  packId: text("pack_id").notNull(),
+  cardsIncluded: integer("cards_included").notNull(),
+  priceCents: integer("price_cents").notNull(),
+  paymentRef: text("payment_ref"),
+  provider: text("provider").notNull(),
+  createdAt: text("created_at").notNull(),
+}, (t) => [
+  index("purchases_user_idx").on(t.userId),
+]);
+
 export const outbox = sqliteTable("outbox", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   cardId: text("card_id"),
@@ -160,3 +180,4 @@ export type User = typeof users.$inferSelect;
 export type CardEvent = typeof cardEvents.$inferSelect;
 export type Reply = typeof replies.$inferSelect;
 export type OutboxRow = typeof outbox.$inferSelect;
+export type Purchase = typeof purchases.$inferSelect;

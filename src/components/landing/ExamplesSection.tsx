@@ -1,6 +1,5 @@
 "use client";
 
-import { useRef } from "react";
 import { MiniCard } from "@/components/brand/MiniCard";
 
 const EXAMPLES = [
@@ -40,11 +39,21 @@ const EXAMPLES = [
     },
     caption: "Just because · example",
   },
+  {
+    data: {
+      occasion: "christmas",
+      recipientName: "Noah",
+      senderName: "Grandma June",
+      message: "The tree went up late this year because someone insisted every light be checked twice. It was the best evening of December so far. Save me a seat by the fire.",
+      signoff: "love, Grandma June",
+      theme: "winter-wonderland",
+      watermark: false,
+    },
+    caption: "Christmas · example",
+  },
 ];
 
 export function ExamplesSection() {
-  const scrollRef = useRef<HTMLDivElement>(null);
-
   return (
     <section id="examples" className="relative">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-20 sm:py-24">
@@ -54,20 +63,17 @@ export function ExamplesSection() {
           </h2>
           <p className="mt-3 text-ink-soft">
             Their name on the envelope, your words in the letter, a theme you picked
-            because it is so them. Here are three, exactly as they arrive.
+            because it is so them. Here are a few, exactly as they arrive.
           </p>
         </div>
 
-        <div
-          ref={scrollRef}
-          className="mt-12 flex gap-6 overflow-x-auto pb-4 no-scrollbar snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0"
-        >
+        <div className="mt-12 grid grid-cols-1 min-[560px]:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-5">
           {EXAMPLES.map((ex, i) => (
             <div
               key={i}
-              className="snap-center shrink-0 w-[280px] sm:w-[300px] flex flex-col items-center gap-3"
+              className="flex flex-col items-center gap-3"
             >
-              <div style={{ transform: `rotate(${i === 1 ? 0 : i === 0 ? -1.5 : 1.5}deg)` }}>
+              <div style={{ transform: `rotate(${[-1.5, 1.5, -1, 1][i % 4]}deg)` }}>
                 <MiniCard data={ex.data} />
               </div>
               <p className="text-[12px] text-ink/45">{ex.caption}</p>

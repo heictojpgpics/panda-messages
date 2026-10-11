@@ -9,7 +9,7 @@ import { REACTION_KINDS } from "@/data/signoffs";
 import { cn } from "@/lib/utils";
 import { cardPhotoUrl, type CardPhotoValue } from "@/lib/card-photos";
 import { AmbientDrift, OpeningBurst, motifsFor } from "./AmbientParticles";
-import { Play, RotateCcw, Music, Send, Heart, Check } from "lucide-react";
+import { Play, RotateCcw, Music, Send, Heart, Check, Link2 } from "lucide-react";
 
 export interface CardSceneData {
   occasionLabel: string;
@@ -217,7 +217,7 @@ export function CardScene({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ delay: 0.45, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                  className="mt-12 px-6 text-center"
+                  className="mt-8 px-6 text-center"
                 >
                   <p className="font-display text-ink/85 text-[18px] leading-snug">
                     Panda has a little something
@@ -238,10 +238,10 @@ export function CardScene({
               initial={{ y: 22, opacity: 0 }}
               animate={{ y: 0, opacity: phase === "arrived" ? 1 : 0 }}
               transition={{ delay: 0.65, duration: 0.5 }}
-              className="pointer-events-none absolute -bottom-3 right-1 sm:right-8 rotate-6"
+              className="pointer-events-none absolute -bottom-6 right-1 sm:right-10 rotate-6"
               aria-hidden
             >
-              <PandaMoodFace mood="wink" size={68} className="drop-shadow-lg" />
+              <PandaMoodFace mood="wink" size={62} className="drop-shadow-lg" />
             </motion.div>
           </motion.div>
         ) : (
@@ -466,6 +466,17 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
   const [reactionError, setReactionError] = useState<string | null>(null);
   const [justPopped, setJustPopped] = useState<string | null>(null);
   const { bursts, pop } = useBurstLayer();
+  const [copied, setCopied] = useState(false);
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/c/${slug}`);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Older browsers: the address bar already holds this exact link.
+    }
+  };
 
   useEffect(() => {
     let live = true;
@@ -536,10 +547,18 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
     <motion.div
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 1.05, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-      className="mt-6 relative"
+      transition={{ delay: 0.9, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      className="mt-5 relative"
     >
       <ReactionBursts bursts={bursts} />
+
+      {/* The closing line, the quiet end of the moment */}
+      <div className="mb-5 flex flex-col items-center gap-1.5 text-center">
+        <span className="h-px w-16 bg-ink/15" aria-hidden />
+        <p className="font-display italic text-[14px] text-ink/60">
+          made with love from {data.senderName}
+        </p>
+      </div>
 
       <div className="rounded-[26px] border border-ink/[0.08] bg-paper/85 p-4 shadow-[0_18px_45px_-34px_rgba(22,36,28,0.65)] backdrop-blur-sm sm:p-5">
         <div className="flex items-start justify-between gap-3">
@@ -554,17 +573,22 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
           </span>
         </div>
 
-        {/* Reactions: three across on a phone, six on a desk. Labels are
-            never truncated, they wrap to a second line and every button
-            keeps the same height. */}
+        {/* Reactions: three across on a phone, six on a desk. Every button
+            is the same height: one line for the glyph, two for the label. */}
         <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
-          {REACTION_KINDS.map((r) => {
+          {REACTION_KINDS.map((r, idx) => {
             const count = reacted[r.id] ?? 0;
             const sent = sentKinds.has(r.id);
             const popped = justPopped === r.id;
             return (
               <motion.button
                 key={r.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={popped ? { opacity: 1, y: [0, -3, 0] } : { opacity: 1, y: 0 }}
+                transition={{
+                  y: { type: "spring", stiffness: 420, damping: 18 },
+                  opacity: { delay: 0.95 + idx * 0.05, duration: 0.35 },
+                }}
                 onClick={(e) => {
                   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                   react(r.id, r.emoji, rect.left + rect.width / 2, rect.top + rect.height / 2);
@@ -572,17 +596,15 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
                 aria-pressed={sent}
                 aria-label={`${r.label}${count ? `, ${count} received` : ""}`}
                 whileTap={{ scale: 0.93 }}
-                animate={popped ? { y: [0, -3, 0] } : { y: 0 }}
-                transition={{ type: "spring", stiffness: 420, damping: 18 }}
                 className={cn(
-                  "group relative flex min-h-[74px] flex-col items-center justify-center gap-1 rounded-2xl border px-1 py-2 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-jade/45",
+                  "group relative flex min-h-[76px] flex-col items-center justify-center gap-1 rounded-2xl border px-1 py-2 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-jade/45",
                   sent
                     ? "border-jade/35 bg-jade/[0.09] text-jade"
                     : "border-ink/[0.09] bg-white/75 text-ink/70 hover:-translate-y-0.5 hover:border-blush/40 hover:shadow-[0_8px_18px_-12px_rgba(22,36,28,0.5)] active:translate-y-0"
                 )}
               >
                 <motion.span
-                  className="text-[22px] leading-none"
+                  className="flex h-7 items-center text-[22px] leading-none"
                   aria-hidden
                   animate={popped ? { scale: [1, 1.35, 1], rotate: [0, -8, 8, 0] } : { scale: 1 }}
                   transition={{ duration: 0.55 }}
@@ -702,13 +724,22 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
           )}
         </div>
 
-        <div className="mt-4 flex justify-center">
+        {/* Quiet utilities: replay, and keeping the link */}
+        <div className="mt-4 flex items-center justify-center gap-1.5 sm:gap-3 border-t border-ink/[0.06] pt-3.5">
           <button
             onClick={onReplay}
-            className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink/45 hover:text-jade transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium text-ink/45 hover:text-jade hover:bg-jade-soft/50 transition-colors"
           >
             <RotateCcw className="h-3.5 w-3.5" />
-            Open it again (some people do)
+            Open it again
+          </button>
+          <span className="h-3.5 w-px bg-ink/10" aria-hidden />
+          <button
+            onClick={copyLink}
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium text-ink/45 hover:text-jade hover:bg-jade-soft/50 transition-colors"
+          >
+            {copied ? <Check className="h-3.5 w-3.5 text-jade" /> : <Link2 className="h-3.5 w-3.5" />}
+            {copied ? "Link copied" : "Keep this link"}
           </button>
         </div>
       </div>

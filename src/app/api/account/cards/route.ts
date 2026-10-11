@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { listCardsForUser, listEventsForUser } from "@/lib/cards";
+import { getUserCredits, listCardsForUser, listEventsForUser } from "@/lib/cards";
 import { listOutboxForUser } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
@@ -12,13 +12,15 @@ export async function GET() {
 
   const cards = await listCardsForUser(user.id);
   const cardIds = cards.map((c) => c.id);
-  const [events, outbox] = await Promise.all([
+  const [events, outbox, credits] = await Promise.all([
     listEventsForUser(user.id),
     listOutboxForUser(cardIds, 25),
+    getUserCredits(user.id),
   ]);
 
   return NextResponse.json({
     user,
+    credits,
     cards: cards.map((c) => ({
       id: c.id,
       slug: c.slug,
@@ -35,6 +37,8 @@ export async function GET() {
       theme: c.theme,
       hasSong: Boolean(c.songId),
       photoCount: c.photos ? JSON.parse(c.photos).length : 0,
+      batchId: c.batchId,
+      packId: c.packId,
     })),
     events: events.map((e) => ({
       id: e.id,

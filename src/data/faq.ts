@@ -7,11 +7,19 @@ export interface FaqItem {
 export const FAQS: FaqItem[] = [
   {
     q: "Is there a free version?",
-    a: "Yes, and it is genuinely free. You make the card, we give you the link, you share it however you like. The card carries a small pandamessages.com line at the bottom. If you ever want that gone, plus the delivery and the songs and the photos, that is the $4.99 card.",
+    a: "Making the card is free, and so is watching the whole opening as many times as you like before you send it. When you are ready for it to actually reach them, that is the paid part: from $5 a card, cheaper in packs. No watermark, no weird branding on their moment.",
   },
   {
     q: "Does the person I send it to need an account?",
     a: "No. They never even see a signup screen. They get an email that looks like a delivery, tap it, and the envelope opens. That is the entire experience from their side.",
+  },
+  {
+    q: "How much does it cost?",
+    a: "Five dollars sends one card. Twenty sends five, fifty sends fifteen, and the ones you do not use stay on your account: they never expire. Every card is the full experience either way, there is no lesser version.",
+  },
+  {
+    q: "Can I send one card to a bunch of people?",
+    a: "Yes, and it is better than a group email. Paste up to 15 addresses at checkout and everyone gets their own envelope, their name on the front, their own private page. One payment covers the whole list.",
   },
   {
     q: "Can I schedule it in advance?",
@@ -30,12 +38,8 @@ export const FAQS: FaqItem[] = [
     a: "Then we refund you immediately, no forms, no interrogation. Deliveries are tracked on your dashboard, so you will see the moment it lands anyway. But if the internet eats one, it is on us.",
   },
   {
-    q: "Can I send it myself instead?",
-    a: "Absolutely. The free card is exactly that: you share the link by text, WhatsApp, carrier pigeon. The paid version is for when you want it to arrive on its own, on the day, like a proper surprise.",
-  },
-  {
     q: "Is there a subscription?",
-    a: "No. $4.99 per card, once, when you want it. The only recurring thing anywhere will be Panda Remembers, the optional birthday service, planned at $19 a year with cancel any time.",
+    a: "No. You buy cards, you send cards, that is the whole arrangement. The only recurring thing anywhere will be Panda Remembers, the optional birthday service, planned at $19 a year with cancel any time.",
   },
   {
     q: "How long does it take to make one?",

@@ -251,3 +251,23 @@ inside stays hidden on purpose. The curiosity gap is the product.
 - All ten replacement portraits are 640 × 800 transparent PNGs. The original four email portraits and all fourteen seal assets also retain alpha channels.
 - `npm run email:preview` now renders the complete 45-email matrix to `artifacts/email-previews` without external or machine-specific paths.
 - Matrix HTML ranges from 8KB to 10KB and contains no unresolved `undefined`, `NaN`, or local author-machine path values.
+
+## Packs, bulk sending, and the paid send (v4)
+
+**The model changed**: making and previewing stays free, every send is paid. Three packs: one card for $5, five for $20, fifteen for $50. Credits land on the account at purchase and every send spends one, so a pack is real inventory rather than a discount coupon. Cancelling a single-pack card refunds the payment; cancelling a pack card returns one credit to the account instead of refunding the whole pack purchase, which is what someone cancelling one of five cards actually wants.
+
+**Bulk sending** lives at the last wizard step: paste up to 15 emails, they dedupe, names are guessed locally from the addresses (no third-party lookup: handing your friends' emails to a data broker to fill in a text field is a trade no card sender would make), every guess is editable and flagged, and each person gets their own envelope with their own name on it. The batch shares one id end to end: one checkout, one receipt, one refund policy, individual delivery.
+
+Under the hood: `users.credits`, `cards.batch_id`, `cards.pack_id`, a `purchases` table, migration `0002_packs_credits.sql`, and one fulfillment pipeline (`src/lib/fulfillment.ts`) shared by the Stripe webhook and the simulated checkout, so the real-money path and the demo path can never drift. Pack prices resolve server-side from the pack table; a tampered checkout request cannot buy fifteen cards for five dollars.
+
+**Hardening**: every state-changing route now refuses cross-site POSTs at the door (Origin/Referer check, webhooks exempt since they authenticate by signature), and the app sends a full security header set including CSP scoped to what the product actually loads (YouTube embeds for songs, nothing else third-party).
+
+**Fixes that were felt, not just reported**: the ambient falling particles used random delays that clumped (measured phase gaps up to 26% of the cycle), so the card page opened with particles pouring from the top like water. Phases are now stratified (slot per piece plus jitter), so the very first frame shows pieces at every height. The hero leaves were worse: positive delays meant an empty sky for the first seconds. Also: the hero portrait that pushed the headline a quarter of the way down the page is gone, the examples row has a fourth card instead of a gap, the post-open view gained a quiet "made with love from" signature line and a keep-this-link utility, and the reaction buttons enter with a stagger.
+
+**Local development**: `scripts/local-d1-init.mjs` and `scripts/local-d1-seed.mjs` bring the local D1 proxy state (the database `next dev` actually talks to) up from the migrations and seed eight demo cards, no Cloudflare credentials needed.
+
+**Verification**: an 18-check end-to-end script (`scripts/e2e-paid-flow.mjs`) walks the whole paid pipeline: signup, single send on a pack, guest checkout with only an edit token, a 7-person bulk batch with dedupe and name guessing, a credits shortfall correctly refused, a batch purchase, a credit-funded send, dashboard state, cross-site POSTs blocked, payment retries idempotent, and a pack-card cancellation returning the credit. Production build, typecheck and lint all pass. The 46-email preview matrix renders clean, including the new pack receipt.
+
+## Follow-ups in the same pass
+
+The wizard used to read its saved draft from localStorage during the first render, so a returning sender got a hydration mismatch (the server said Step 1, the browser jumped to Step 4). The restore now happens after mount: first frames agree everywhere, then the saved step takes over. Also fixed the pack-cancellation path so a pack card returns one credit instead of refunding the entire pack purchase.
