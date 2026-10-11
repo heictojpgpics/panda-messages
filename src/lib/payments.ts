@@ -1,9 +1,9 @@
-import { SITE } from "./config";
+import { SITE, packById, type CardPack } from "./config";
 
 /**
  * Payments. Stripe when STRIPE_SECRET_KEY is set, otherwise a premium
  * simulated checkout that runs the full flow locally. Either way the
- * happy path is identical: card becomes paid, delivery is scheduled.
+ * happy path is identical: cards become paid, delivery is scheduled.
  */
 
 export type CheckoutSession = {
@@ -20,10 +20,11 @@ export function stripeEnabled(): boolean {
   return paymentMode() === "stripe";
 }
 
-/** Create a Stripe Checkout Session over the plain REST API (no SDK). */
+/** Create a Stripe Checkout Session for a pack over the plain REST API. */
 export async function createStripeCheckout(opts: {
-  cardId: string;
-  slug: string;
+  batchId: string;
+  cardCount: number;
+  pack: CardPack;
   customerEmail?: string | null;
   successUrl: string;
   cancelUrl: string;
@@ -33,16 +34,22 @@ export async function createStripeCheckout(opts: {
   body.set("mode", "payment");
   body.set("success_url", opts.successUrl);
   body.set("cancel_url", opts.cancelUrl);
-  body.set("client_reference_id", opts.cardId);
-  body.set("metadata[cardId]", opts.cardId);
-  body.set("metadata[slug]", opts.slug);
+  body.set("client_reference_id", opts.batchId);
+  body.set("metadata[batchId]", opts.batchId);
+  body.set("metadata[packId]", opts.pack.id);
   body.set("line_items[0][quantity]", "1");
   body.set("line_items[0][price_data][currency]", "usd");
-  body.set("line_items[0][price_data][unit_amount]", String(Math.round(SITE.cardPrice * 100)));
-  body.set("line_items[0][price_data][product_data][name]", "Panda card, delivered");
+  // The price comes from the server-side pack table, never from the client.
+  body.set("line_items[0][price_data][unit_amount]", String(Math.round(opts.pack.price * 100)));
+  body.set(
+    "line_items[0][price_data][product_data][name]",
+    opts.pack.id === "single" ? "Panda card, delivered" : `Panda ${opts.pack.label} pack`
+  );
   body.set(
     "line_items[0][price_data][product_data][description]",
-    "A personal card, hand-delivered by Panda on the day you pick. No watermark, keepsake replay, edit or cancel any time before it sends."
+    opts.pack.id === "single"
+      ? "A personal card, hand-delivered by Panda on the day you pick. No watermark, keepsake replay, edit or cancel any time before it sends."
+      : `${opts.pack.cards} card credits. Every send is a full card: delivery on the morning you pick, no watermark, songs, photos, keepsake replay.`
   );
   if (opts.customerEmail) body.set("customer_email", opts.customerEmail);
 
@@ -61,6 +68,8 @@ export async function createStripeCheckout(opts: {
   const json = (await res.json()) as { id: string; url: string };
   return { url: json.url, provider: "stripe", ref: json.id };
 }
+
+export { packById, SITE };
 
 export async function stripeRefund(paymentRef: string): Promise<boolean> {
   const key = process.env.STRIPE_SECRET_KEY;

@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sameOrigin } from "@/lib/origin";
 import { createSession, createUser, findUserByEmail, isValidEmail, normalizeEmail } from "@/lib/auth";
 import { clientIp, rateLimit } from "@/lib/ratelimit";
 
 const MAX_PASSWORD = 200;
 
 export async function POST(req: NextRequest) {
+  // Cross-site guard: a POST from anywhere but this site is turned away
+  // before it reaches any logic.
+  if (!sameOrigin(req)) {
+    return NextResponse.json({ error: "Not from here." }, { status: 403 });
+  }
+
   try {
     // Five sign-ups per IP per hour is plenty for humans and sad for bots.
     const verdict = await rateLimit(`signup:${clientIp(req)}`, 5, 60 * 60 * 1000);

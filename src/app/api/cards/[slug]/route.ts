@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sameOrigin } from "@/lib/origin";
 import { getCurrentUser } from "@/lib/auth";
 import { getCardBySlug, updateCard, attachCardToUser, cardOwnedBy, logEvent } from "@/lib/cards";
 
@@ -7,6 +8,12 @@ import { getCardBySlug, updateCard, attachCardToUser, cardOwnedBy, logEvent } fr
  * either the signed-in account or the edit token issued at creation.
  */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+  // Cross-site guard: a POST from anywhere but this site is turned away
+  // before it reaches any logic.
+  if (!sameOrigin(req)) {
+    return NextResponse.json({ error: "Not from here." }, { status: 403 });
+  }
+
   try {
     const body = await req.json();
     const { slug } = await params;

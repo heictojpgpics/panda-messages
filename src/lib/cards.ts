@@ -1,8 +1,8 @@
 import { getDb } from "./db";
-import { cards, cardEvents, reactions, replies, users } from "./db/schema";
+import { cards, cardEvents, purchases, reactions, replies, users } from "./db/schema";
 import { and, asc, desc, eq, gt, inArray, lte, ne, sql } from "drizzle-orm";
 import { newId, newSlug, newToken, sha256Hex, timingSafeEqualStr } from "./ids";
-import { getTheme, FREE_THEMES } from "@/data/themes";
+import { getTheme } from "@/data/themes";
 import type { SessionUser } from "./auth";
 import { siteUrl } from "./config";
 import type { CardPhotoValue } from "./card-photos";
@@ -78,7 +78,7 @@ export async function hashEditToken(token: string): Promise<string> {
   return sha256Hex(`edit:${token}`);
 }
 
-export async function createCard(draft: CardDraft, userId: string | null) {
+export async function createCard(draft: CardDraft, userId: string | null, batchId: string | null = null) {
   const db = await getDb();
   const now = new Date().toISOString();
   const id = newId();
@@ -106,6 +106,7 @@ export async function createCard(draft: CardDraft, userId: string | null) {
     status: "draft",
     watermark: true,
     replyToCardId: draft.replyToCardId || null,
+    batchId,
     createdAt: now,
     updatedAt: now,
   });
@@ -229,7 +230,7 @@ export async function getRepliesForCard(cardId: string) {
  */
 export async function markPaid(
   id: string,
-  opts: { paymentRef: string; provider: string; deliverAt: string | null; recipientEmail: string | null }
+  opts: { paymentRef: string; provider: string; deliverAt: string | null; recipientEmail: string | null; packId?: string | null }
 ): Promise<boolean> {
   const db = await getDb();
   const now = new Date().toISOString();
@@ -245,6 +246,7 @@ export async function markPaid(
       deliverAt: opts.deliverAt,
       deliveredAt: null,
       recipientEmail: opts.recipientEmail,
+      ...(opts.packId ? { packId: opts.packId } : {}),
       updatedAt: now,
     })
     .where(and(eq(cards.id, id), ne(cards.plan, "paid")))
@@ -252,25 +254,85 @@ export async function markPaid(
 
   if (rows.length === 0) return false; // someone else already paid this card
 
-  await logEvent(id, "paid", { provider: opts.provider });
+  await logEvent(id, "paid", { provider: opts.provider, packId: opts.packId ?? null });
   await logEvent(id, "scheduled", { deliverAt: opts.deliverAt ?? "right away" });
   return true;
 }
 
-export async function markFreeFinalized(id: string) {
+/* ---------------- Packs and credits ---------------- */
+
+/** A completed purchase lands its whole pack on the account at once. */
+export async function grantCredits(userId: string, count: number): Promise<void> {
+  if (count <= 0) return;
   const db = await getDb();
-  const now = new Date().toISOString();
-  // The free card stays honest to its own description: watermark, classic
-  // theme. If a paid theme was picked during writing, it gently comes home.
-  const rows = await db.select().from(cards).where(eq(cards.id, id)).limit(1);
-  const card = rows[0];
-  if (!card) return;
-  const keepTheme = FREE_THEMES.includes(card.theme) ? card.theme : "bamboo-grove";
   await db
-    .update(cards)
-    .set({ status: "sent", theme: keepTheme, deliveredAt: now, updatedAt: now })
-    .where(eq(cards.id, id));
-  await logEvent(id, "delivered", { mode: "self-share" });
+    .update(users)
+    .set({ credits: sql`${users.credits} + ${count}`, updatedAt: new Date().toISOString() })
+    .where(eq(users.id, userId));
+}
+
+/**
+ * Spend one credit. The decrement is a single conditional UPDATE, so two
+ * sends racing on the last credit cannot both win: the row only matches
+ * while credits remain.
+ */
+export async function consumeCredit(userId: string): Promise<boolean> {
+  const db = await getDb();
+  const rows = await db
+    .update(users)
+    .set({ credits: sql`${users.credits} - 1`, updatedAt: new Date().toISOString() })
+    .where(and(eq(users.id, userId), sql`${users.credits} >= 1`))
+    .returning({ credits: users.credits });
+  return rows.length > 0;
+}
+
+export async function recordPurchase(opts: {
+  userId: string;
+  packId: string;
+  cardsIncluded: number;
+  priceCents: number;
+  paymentRef: string;
+  provider: string;
+}): Promise<void> {
+  const db = await getDb();
+  await db.insert(purchases).values({
+    id: newId(),
+    userId: opts.userId,
+    packId: opts.packId,
+    cardsIncluded: opts.cardsIncluded,
+    priceCents: opts.priceCents,
+    paymentRef: opts.paymentRef,
+    provider: opts.provider,
+    createdAt: new Date().toISOString(),
+  });
+}
+
+export async function getUserCredits(userId: string): Promise<number> {
+  const db = await getDb();
+  const rows = await db
+    .select({ credits: users.credits })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  return rows[0]?.credits ?? 0;
+}
+
+/**
+ * All cards of one batch, oldest first, for checkout and delivery. A single
+ * card is its own batch: when the id passed in is a card id rather than a
+ * batch id (sends that never went through bulk), the card itself is the
+ * batch.
+ */
+export async function cardsInBatch(batchId: string) {
+  const db = await getDb();
+  return db
+    .select()
+    .from(cards)
+    .where(
+      sql`(${cards.batchId} = ${batchId} OR (${cards.id} = ${batchId} AND ${cards.batchId} IS NULL))`
+    )
+    .orderBy(asc(cards.createdAt))
+    .limit(20);
 }
 
 export async function cancelCard(id: string, refund: boolean) {

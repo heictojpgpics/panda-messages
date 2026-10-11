@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sameOrigin } from "@/lib/origin";
 import { createSession, findUserByEmail, isValidEmail, normalizeEmail, verifyPassword } from "@/lib/auth";
 import { clientIp, rateLimit } from "@/lib/ratelimit";
 
 export async function POST(req: NextRequest) {
+  // Cross-site guard: a POST from anywhere but this site is turned away
+  // before it reaches any logic.
+  if (!sameOrigin(req)) {
+    return NextResponse.json({ error: "Not from here." }, { status: 403 });
+  }
+
   try {
     // Ten attempts per IP per ten minutes. Enough to mistype a password
     // a few times, not enough to brute force one.

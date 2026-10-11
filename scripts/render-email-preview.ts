@@ -57,7 +57,7 @@ async function main() {
     save("occasion-custom", "delivery / custom occasion", mail);
   }
 
-  // 3. Receipt: scheduled + immediate
+  // 3. Receipt: scheduled + immediate + a pack purchase
   {
     const sched = mod.receiptEmail({
       buyerEmail: "daniel@example.com",
@@ -79,6 +79,17 @@ async function main() {
       scheduledFor: null,
     });
     save("receipt-now", "receipt / immediate", now);
+    const pack = mod.receiptEmail({
+      buyerEmail: "daniel@example.com",
+      recipientName: "7 people",
+      dashboardUrl: `${BASE}/dashboard`,
+      refundNoteUrl: `${BASE}/refund-policy`,
+      occasionId: "christmas",
+      themeId: "winter-wonderland",
+      scheduledFor: "2026-12-25T08:00:00.000Z",
+      packLabel: "Fifteen cards",
+    });
+    save("receipt-pack", "receipt / fifteen-card pack", pack);
   }
 
   // 4. Claim

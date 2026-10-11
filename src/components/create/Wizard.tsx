@@ -4,16 +4,18 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { OCCASIONS, getOccasion, occasionLabel } from "@/data/occasions";
-import { THEMES, FREE_THEMES } from "@/data/themes";
+import { THEMES } from "@/data/themes";
 import { MESSAGE_SEEDS } from "@/data/messages";
 import { defaultSignoff } from "@/data/signoffs";
 import { MiniCard } from "@/components/brand/MiniCard";
 import { EnvelopeChip } from "@/components/brand/Envelope";
 import { cn } from "@/lib/utils";
 import { compressPhoto, extractYouTubeId, PHOTO_LIMITS } from "@/lib/photo";
+import { guessNameFromEmail } from "@/lib/name-from-email";
+import { PACKS } from "@/lib/config";
 import {
   ArrowLeft, ArrowRight, Shuffle, Music, Camera, Lock, X, Sparkles,
-  Calendar, Mail, Link2, PartyPopper, Check, Eye,
+  Calendar, Mail, Link2, PartyPopper, Check, Eye, Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,14 +95,27 @@ export function Wizard() {
   );
 
   // Delivery state (step 4)
-  const [delivery, setDelivery] = useState<"panda" | "self">("panda");
   const [when, setWhen] = useState<"now" | "day">("now");
   const [date, setDate] = useState("");
   const [recipientEmail, setRecipientEmail] = useState("");
-  const [freeAuthed, setFreeAuthed] = useState(false);
-  const [showAuthGate, setShowAuthGate] = useState(false);
-  const [freeCardSlug, setFreeCardSlug] = useState<string | null>(null);
-  const [freeShare, setFreeShare] = useState(false);
+
+  // Packs, credits and bulk sending.
+  const [packId, setPackId] = useState<string>("single");
+  const [credits, setCredits] = useState(0);
+  const [spendCredits, setSpendCredits] = useState(true);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkInput, setBulkInput] = useState("");
+  const [bulkRecipients, setBulkRecipients] = useState<{ email: string; name: string; guessed: boolean }[]>([]);
+  const [madeBatch, setMadeBatch] = useState<{ batchId: string; cards: { id: string; slug: string; editToken: string }[] } | null>(null);
+
+  // Credits live on the account; one fetch when the send step is near.
+  useEffect(() => {
+    if (step < 2) return;
+    fetch("/api/auth/me")
+      .then((r) => (r.ok ? r.json() : { user: null, credits: 0 }))
+      .then((me) => setCredits(me.credits ?? 0))
+      .catch(() => {});
+  }, [step]);
   const saveDraftMemory = useCardMemoryStore((state) => state.saveDraft);
   const clearDraftMemory = useCardMemoryStore((state) => state.clearDraft);
   const rememberEditToken = useCardMemoryStore((state) => state.rememberEditToken);
@@ -279,7 +294,7 @@ export function Wizard() {
     return data;
   };
 
-  const startCheckout = async (cardId: string, slug: string, editToken?: string) => {
+  const startCheckout = async (opts: { batchId?: string; slug?: string; cardId?: string; editToken?: string }) => {
     setBusy(true);
     try {
       const deliverAt = when === "day" && date ? new Date(date + "T09:00:00").toISOString() : null;
@@ -287,10 +302,11 @@ export function Wizard() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          slug,
-          cardId,
-          editToken,
-          recipientEmail: delivery === "panda" ? recipientEmail : null,
+          batchId: opts.batchId,
+          slug: opts.slug,
+          packId,
+          editToken: opts.editToken,
+          recipientEmail: !opts.batchId ? recipientEmail : null,
           deliverAt,
         }),
       });
@@ -305,47 +321,114 @@ export function Wizard() {
     }
   };
 
-  const sendFree = async () => {
-    // Free cards need an owner so they stay editable and watchable.
-    if (!freeAuthed) {
-      const me = await fetch("/api/auth/me").then((r) => (r.ok ? r.json() : { user: null })).catch(() => ({ user: null }));
-      if (!me.user) {
-        setShowAuthGate(true);
-        toast("One tiny account, so your card stays yours. Thirty seconds.");
-        return;
-      }
-      setFreeAuthed(true);
-    }
+  /** Send on credits already owned: no checkout, straight out the door. */
+  const sendOnCredits = async (batchId: string) => {
     setBusy(true);
     try {
-      const card = await createCard();
-      if (!card) return;
-      if (card.editToken) saveEditToken(card.slug, card.editToken, card.id);
-      await fetch(`/api/cards/${card.slug}/finalize-free`, {
+      const res = await fetch("/api/checkout/use-credits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ editToken: card.editToken }),
-      }).catch(() => {});
-      setFreeCardSlug(card.slug);
-      setFreeShare(true);
+        body: JSON.stringify({ batchId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast(data.error ?? "The send did not go through.");
+        setSpendCredits(false);
+        return;
+      }
       clearDraftMemory(DRAFT_MEMORY_KEY);
+      router.push(`/dashboard?watch=${data.slug ?? ""}&sent=${data.sent ?? 1}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Parse a pasted blob of emails into deduped, name-guessed recipients. */
+  const parseBulkInput = (text: string) => {
+    setBulkInput(text);
+    const emails = text
+      .split(/[\s,;]+/)
+      .map((s) => s.trim().toLowerCase())
+      .filter((s) => s.includes("@"));
+    const seen = new Set<string>();
+    const next: { email: string; name: string; guessed: boolean }[] = [];
+    for (const email of emails) {
+      if (seen.has(email)) continue;
+      seen.add(email);
+      const guess = guessNameFromEmail(email);
+      next.push({ email, name: guess, guessed: Boolean(guess) });
+    }
+    setBulkRecipients(next.slice(0, 15));
+    // The pack should fit the crowd: smallest pack that covers everyone.
+    if (next.length > 5) setPackId("pack15");
+    else if (next.length > 1) setPackId("pack5");
+    else setPackId("single");
+  };
+
+  const bulkReady = bulkRecipients.length >= 2 && bulkRecipients.every((r) => r.name.trim().length > 0);
+
+  const bulkSend = async () => {
+    if (!bulkReady || busy) return;
+    setBusy(true);
+    try {
+      // Reuse the batch already made this session (names may have been
+      // corrected) instead of minting twins on every retry.
+      let batch = madeBatch;
+      if (!batch) {
+        const res = await fetch("/api/cards/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            base: {
+              senderName: draft.senderName,
+              occasion: draft.occasion === "custom" ? "just-because" : draft.occasion,
+              customOccasion: draft.occasion === "custom" ? draft.customOccasion ?? "" : null,
+              message: draft.message,
+              signoff,
+              theme: draft.theme,
+              songId,
+              songProvider: songId ? "youtube" : null,
+              replyTo: params.get("replyTo"),
+            },
+            recipients: bulkRecipients.map((r) => ({ email: r.email, name: r.name })),
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          toast(data.error ?? "The batch did not come together.");
+          return;
+        }
+        batch = data;
+        setMadeBatch(data);
+        for (const c of data.cards) if (c.editToken) saveEditToken(c.slug, c.editToken, c.id);
+      } else {
+        // Names may have been corrected after the first attempt: sync them.
+        await Promise.all(
+          bulkRecipients.map((r, i) =>
+            fetch(`/api/cards/${batch!.cards[i]?.slug ?? ""}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                slug: batch!.cards[i]?.slug,
+                editToken: batch!.cards[i]?.editToken,
+                recipientName: r.name,
+              }),
+            }).catch(() => {})
+          )
+        );
+      }
+      if (!batch) return;
+      if (spendCredits && credits >= bulkRecipients.length) {
+        await sendOnCredits(batch.batchId);
+      } else {
+        await startCheckout({ batchId: batch.batchId });
+      }
     } finally {
       setBusy(false);
     }
   };
 
   const paidSend = async () => {
-    if (delivery === "panda") {
-      const email = recipientEmail.trim();
-      if (!email) {
-        toast("Where should Panda bring it? Their email is needed.");
-        return;
-      }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
-        toast("That email does not look right. Check it once more?");
-        return;
-      }
-    }
     if (when === "day" && !date) {
       toast("Pick the day Panda should send it.");
       return;
@@ -356,16 +439,25 @@ export function Wizard() {
       const card = await createCard();
       if (!card) return;
       if (card.editToken) saveEditToken(card.slug, card.editToken, card.id);
-      await startCheckout(card.id, card.slug, card.editToken);
+      if (spendCredits && credits >= 1) {
+        // A single card is its own batch of one.
+        await sendOnCredits(card.id);
+      } else {
+        const email = recipientEmail.trim();
+        if (!email) {
+          toast("Where should Panda bring it? Their email is needed.");
+          return;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+          toast("That email does not look right. Check it once more?");
+          return;
+        }
+        await startCheckout({ slug: card.slug, cardId: card.id, editToken: card.editToken });
+      }
     } finally {
       setBusy(false);
     }
   };
-
-  // ---------- free share screen ----------
-  if (freeShare && freeCardSlug) {
-    return <ShareScreen slug={freeCardSlug} senderName={draft.senderName} recipientName={draft.recipientName} />;
-  }
 
   const canNext =
     (step === 0 && (occasion || draft.customOccasion)) ||
@@ -530,24 +622,28 @@ export function Wizard() {
                     draft={draft}
                     signoff={signoff}
                     songId={songId}
-                    delivery={delivery}
-                    setDelivery={setDelivery}
                     when={when}
                     setWhen={setWhen}
                     date={date}
                     setDate={setDate}
                     recipientEmail={recipientEmail}
                     setRecipientEmail={setRecipientEmail}
+                    packId={packId}
+                    setPackId={setPackId}
+                    credits={credits}
+                    spendCredits={spendCredits}
+                    setSpendCredits={setSpendCredits}
+                    bulkMode={bulkMode}
+                    setBulkMode={setBulkMode}
+                    bulkInput={bulkInput}
+                    parseBulkInput={parseBulkInput}
+                    bulkRecipients={bulkRecipients}
+                    setBulkRecipients={setBulkRecipients}
+                    bulkReady={bulkReady}
                     onPreview={() => setPreviewOpen(true)}
                     onPaid={paidSend}
-                    onFree={sendFree}
+                    onBulkSend={bulkSend}
                     busy={busy}
-                    showAuthGate={showAuthGate && !freeShare}
-                    onAuthed={() => {
-                      setFreeAuthed(true);
-                      setShowAuthGate(false);
-                      sendFree();
-                    }}
                   />
                 ) : null}
               </motion.div>
@@ -917,17 +1013,11 @@ function MessageStep({
         <p className="text-[13.5px] font-medium text-ink/80">Choose a theme for them</p>
         <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
           {THEMES.map((t) => {
-            const free = FREE_THEMES.includes(t.id);
             const active = draft.theme === t.id;
             return (
               <button
                 key={t.id}
-                onClick={() => {
-                  set("theme", t.id);
-                  if (!free) {
-                    toast(`${t.name} rides along with the full card. Pick it freely, it locks in when you pay.`);
-                  }
-                }}
+                onClick={() => set("theme", t.id)}
                 title={t.blurb}
                 className={cn(
                   "relative rounded-xl p-1.5 border-2 bg-paper flex flex-col items-center gap-1 transition-all",
@@ -935,18 +1025,15 @@ function MessageStep({
                 )}
                 aria-pressed={active}
               >
-                {!free && (
-                  <span className="absolute -top-1 -right-1 grid h-4 w-4 place-items-center rounded-full bg-gold/90 text-white" aria-hidden>
-                    <Lock className="h-2.5 w-2.5" />
-                  </span>
-                )}
                 <EnvelopeChip theme={t} size={48} />
                 <span className="text-[9.5px] font-medium text-ink/70 leading-none text-center">{t.name.split(" ")[0]}</span>
               </button>
             );
           })}
         </div>
-        <p className="text-[11.5px] text-ink/45">{getTheme(draft.theme).blurb}</p>
+        <p className="text-[11.5px] text-ink/45">
+          {getTheme(draft.theme).blurb} All fourteen come with every card; try them in the preview, switch as often as you like.
+        </p>
       </div>
 
       <Button onClick={onNext} disabled={!canNext} className="sheen w-full h-12 rounded-full text-[15px] font-semibold" size="lg">
@@ -956,44 +1043,64 @@ function MessageStep({
   );
 }
 
-/* The final step: delivery decisions */
+/* The final step: delivery, pack and (maybe) a whole batch */
 function ReadyStep({
   draft,
   signoff,
   songId,
-  delivery,
-  setDelivery,
   when,
   setWhen,
   date,
   setDate,
   recipientEmail,
   setRecipientEmail,
+  packId,
+  setPackId,
+  credits,
+  spendCredits,
+  setSpendCredits,
+  bulkMode,
+  setBulkMode,
+  bulkInput,
+  parseBulkInput,
+  bulkRecipients,
+  setBulkRecipients,
+  bulkReady,
   onPreview,
   onPaid,
-  onFree,
+  onBulkSend,
   busy,
-  showAuthGate,
-  onAuthed,
 }: {
   draft: Draft;
   signoff: string;
   songId: string | null;
-  delivery: "panda" | "self";
-  setDelivery: (v: "panda" | "self") => void;
   when: "now" | "day";
   setWhen: (v: "now" | "day") => void;
   date: string;
   setDate: (v: string) => void;
   recipientEmail: string;
   setRecipientEmail: (v: string) => void;
+  packId: string;
+  setPackId: (v: string) => void;
+  credits: number;
+  spendCredits: boolean;
+  setSpendCredits: (v: boolean) => void;
+  bulkMode: boolean;
+  setBulkMode: (v: boolean) => void;
+  bulkInput: string;
+  parseBulkInput: (v: string) => void;
+  bulkRecipients: { email: string; name: string; guessed: boolean }[];
+  setBulkRecipients: (v: { email: string; name: string; guessed: boolean }[]) => void;
+  bulkReady: boolean;
   onPreview: () => void;
   onPaid: () => void;
-  onFree: () => void;
+  onBulkSend: () => void;
   busy: boolean;
-  showAuthGate: boolean;
-  onAuthed: () => void;
 }) {
+  const needed = bulkMode ? bulkRecipients.length : 1;
+  const covered = spendCredits && credits >= needed;
+  const pack = PACKS.find((p) => p.id === packId) ?? PACKS[0];
+
   return (
     <div className="mt-7 max-w-xl space-y-6">
       <button
@@ -1012,37 +1119,61 @@ function ReadyStep({
         <ArrowRight className="h-4 w-4 text-ink/40" />
       </button>
 
+      {/* Credits the sender already owns */}
+      {credits > 0 && (
+        <div className="rounded-2xl border border-jade/25 bg-jade-soft/40 px-5 py-4 flex items-start gap-3.5">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-jade text-white text-[13px] font-bold">
+            {credits}
+          </span>
+          <div className="flex-1">
+            <p className="text-[13.5px] font-semibold text-ink">
+              You have {credits} card{credits === 1 ? "" : "s"} paid for
+            </p>
+            <p className="text-[12px] text-ink/60 leading-relaxed">
+              {covered
+                ? `This ${bulkMode ? `batch of ${needed}` : "send"} is covered by your pack. Nothing to pay today.`
+                : `This needs ${needed}. Your credits take ${Math.min(credits, needed)} of it, a small pack covers the rest.`}
+            </p>
+          </div>
+          {credits >= needed && (
+            <button
+              onClick={() => setSpendCredits(!spendCredits)}
+              aria-pressed={covered}
+              className={cn(
+                "shrink-0 self-center rounded-full border-2 px-4 py-2 text-[12.5px] font-semibold transition-all",
+                covered
+                  ? "border-jade bg-jade text-white"
+                  : "border-ink/15 bg-paper text-ink/60 hover:border-ink/30"
+              )}
+            >
+              {covered ? "Using credits" : "Buy a pack instead"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* How it reaches them */}
       <div className="space-y-3">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/45">How it reaches them</p>
 
-        <button
-          onClick={() => setDelivery("panda")}
-          className={cn(
-            "w-full rounded-2xl border-2 px-5 py-4 text-left transition-all",
-            delivery === "panda" ? "border-jade bg-jade-soft/40" : "border-ink/10 bg-paper hover:border-ink/20"
-          )}
-          aria-pressed={delivery === "panda"}
-        >
+        <div className="rounded-2xl border-2 border-jade bg-jade-soft/30 px-5 py-4">
           <span className="flex items-start gap-3.5">
             <Mail className="h-5 w-5 mt-0.5 text-jade shrink-0" />
             <span className="flex-1">
               <span className="flex items-center gap-2 flex-wrap">
-                <span className="text-[14.5px] font-semibold text-ink">Let Panda surprise them</span>
-                <span className="rounded-full bg-gold text-ink text-[9.5px] font-bold uppercase tracking-wide px-2 py-0.5">most loved</span>
+                <span className="text-[14.5px] font-semibold text-ink">Panda delivers it for you</span>
+                <span className="rounded-full bg-gold text-ink text-[9.5px] font-bold uppercase tracking-wide px-2 py-0.5">the whole moment</span>
               </span>
               <span className="block text-[12.5px] text-ink-soft mt-1 leading-relaxed">
-                It lands in their inbox on the morning you pick, and they open it like a gift they never saw coming.
+                {bulkMode
+                  ? `Every person gets their own envelope, with their own name on it, in their own inbox.`
+                  : `It lands in their inbox on the morning you pick, and they open it like a gift they never saw coming.`}
               </span>
             </span>
-            <span className={cn("grid h-5 w-5 place-items-center rounded-full border-2 shrink-0", delivery === "panda" ? "border-jade bg-jade" : "border-ink/25")}>
-              {delivery === "panda" && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
-            </span>
           </span>
-        </button>
 
-        {delivery === "panda" && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="overflow-hidden pl-2">
-            <div className="space-y-4 pt-1">
+          {!bulkMode ? (
+            <div className="mt-4 space-y-4 pl-2">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-[13px] font-medium text-ink/75">
                   Their email, where the envelope lands
@@ -1092,182 +1223,187 @@ function ReadyStep({
                 </div>
               )}
             </div>
-          </motion.div>
-        )}
+          ) : (
+            <div className="mt-4 space-y-4 pl-2">
+              <div className="space-y-2">
+                <Label htmlFor="bulk-emails" className="text-[13px] font-medium text-ink/75">
+                  Paste their emails (up to 15)
+                </Label>
+                <textarea
+                  id="bulk-emails"
+                  value={bulkInput}
+                  onChange={(e) => parseBulkInput(e.target.value)}
+                  rows={3}
+                  placeholder={"mayaa@email.com, jonas.k@work.com,\ngrandma.june@gmail.com"}
+                  className="w-full rounded-2xl border border-ink/12 bg-paper px-4 py-3 text-[13.5px] leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-jade/30"
+                />
+                <p className="text-[11.5px] text-ink/45 leading-relaxed">
+                  Separate with commas, spaces or new lines. Duplicates quietly disappear.
+                  Everyone gets the same card, addressed to them alone.
+                </p>
+              </div>
 
-        <button
-          onClick={() => setDelivery("self")}
-          className={cn(
-            "w-full rounded-2xl border-2 px-5 py-4 text-left transition-all",
-            delivery === "self" ? "border-jade bg-jade-soft/40" : "border-ink/10 bg-paper hover:border-ink/20"
+              {bulkRecipients.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[12.5px] font-semibold text-ink/80">
+                    {bulkRecipients.length} envelope{bulkRecipients.length === 1 ? "" : "s"} ready
+                    <span className="ml-2 font-normal text-ink/50">
+                      Panda guessed the names from the emails. Fix any that look wrong.
+                    </span>
+                  </p>
+                  <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
+                    {bulkRecipients.map((r, i) => (
+                      <div key={r.email} className="flex items-center gap-2 rounded-xl border border-ink/10 bg-paper px-3 py-2">
+                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-jade-soft text-[12px] font-bold text-jade" aria-hidden>
+                          {r.name.trim() ? r.name.trim().charAt(0).toUpperCase() : "?"}
+                        </span>
+                        <Input
+                          value={r.name}
+                          onChange={(e) => {
+                            const next = [...bulkRecipients];
+                            next[i] = { ...r, name: e.target.value.slice(0, 40), guessed: false };
+                            setBulkRecipients(next);
+                          }}
+                          placeholder="their name"
+                          aria-label={`Name for ${r.email}`}
+                          className="h-9 flex-1 border-0 bg-transparent px-1 text-[13px] focus-visible:ring-0 focus-visible:ring-offset-0"
+                        />
+                        <span className="hidden sm:block min-w-0 flex-1 truncate text-[11.5px] text-ink/40">{r.email}</span>
+                        {r.guessed && <span className="shrink-0 rounded-full bg-ink/8 px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide text-ink/45">guessed</span>}
+                        <button
+                          onClick={() => setBulkRecipients(bulkRecipients.filter((_, j) => j !== i))}
+                          aria-label={`Remove ${r.email}`}
+                          className="shrink-0 grid h-7 w-7 place-items-center rounded-full text-ink/40 hover:bg-blush-soft hover:text-blush transition-colors"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
-          aria-pressed={delivery === "self"}
+        </div>
+
+        {/* Bulk toggle */}
+        <button
+          onClick={() => setBulkMode(!bulkMode)}
+          aria-pressed={bulkMode}
+          className={cn(
+            "w-full rounded-2xl border-2 px-5 py-3.5 text-left transition-all flex items-center gap-3",
+            bulkMode ? "border-jade/50 bg-paper" : "border-dashed border-ink/20 bg-transparent hover:border-jade/40"
+          )}
         >
-          <span className="flex items-start gap-3.5">
-            <Link2 className="h-5 w-5 mt-0.5 text-jade shrink-0" />
-            <span className="flex-1">
-              <span className="text-[14.5px] font-semibold text-ink">I&rsquo;ll share the link</span>
-              <span className="block text-[12.5px] text-ink-soft mt-1 leading-relaxed">
-                The free version, carried by you. Keeps the watermark and Bamboo Grove.
-              </span>
+          <Users className={cn("h-4.5 w-4.5 shrink-0", bulkMode ? "text-jade" : "text-ink/50")} />
+          <span className="flex-1">
+            <span className="block text-[13.5px] font-semibold text-ink">
+              {bulkMode ? "Back to one special person" : "Sending to several people?"}
             </span>
-            <span className={cn("grid h-5 w-5 place-items-center rounded-full border-2 shrink-0", delivery === "self" ? "border-jade bg-jade" : "border-ink/25")}>
-              {delivery === "self" && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+            <span className="block text-[12px] text-ink/50 leading-relaxed">
+              {bulkMode
+                ? "One envelope, one inbox, one moment."
+                : "Birthdays, a whole team, the entire family list. Paste the emails once."}
             </span>
           </span>
         </button>
       </div>
 
-      {delivery === "panda" ? (
+      {/* The pack */}
+      {!covered && (
+        <div className="space-y-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/45">Pick your pack</p>
+          <div className="grid grid-cols-3 gap-2.5">
+            {PACKS.map((p) => {
+              const selected = packId === p.id;
+              const fits = bulkMode ? p.cards >= needed : true;
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => setPackId(p.id)}
+                  aria-pressed={selected}
+                  className={cn(
+                    "relative rounded-2xl border-2 px-2.5 py-4 text-center transition-all",
+                    selected
+                      ? "border-jade bg-jade-soft/40 shadow-[0_10px_24px_-14px_rgba(21,122,85,0.5)]"
+                      : "border-ink/10 bg-paper hover:border-ink/25"
+                  )}
+                >
+                  {p.id === "pack5" && (
+                    <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-gold px-2 py-0.5 text-[8.5px] font-bold uppercase tracking-wider text-ink">
+                      most loved
+                    </span>
+                  )}
+                  {p.id === "pack15" && (
+                    <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-ink px-2 py-0.5 text-[8.5px] font-bold uppercase tracking-wider text-white">
+                      best value
+                    </span>
+                  )}
+                  <span className="block font-display font-semibold text-ink text-[22px] leading-none">
+                    ${p.price}
+                  </span>
+                  <span className="mt-1.5 block text-[11.5px] font-semibold text-ink/80 leading-tight">
+                    {p.cards} card{p.cards === 1 ? "" : "s"}
+                  </span>
+                  <span className="mt-0.5 block text-[10.5px] text-ink/45">{p.perCardLabel}</span>
+                  {bulkMode && fits && p.cards > needed && (
+                    <span className="mt-1 block text-[9.5px] font-semibold text-jade leading-tight">
+                      {p.cards - needed} spare
+                    </span>
+                  )}
+                  {bulkMode && !fits && (
+                    <span className="mt-1 block text-[9.5px] text-blush/80 leading-tight">too small</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[11.5px] text-ink/50 leading-relaxed">
+            Every card in a pack is a full card: the delivery, the song, the photos, no watermark.
+            Unused cards stay on your account for whenever the next moment comes.{" "}
+            <span className="text-ink/70 font-medium">{pack.blurb}</span>
+          </p>
+        </div>
+      )}
+
+      {/* The button */}
+      {bulkMode ? (
         <div className="space-y-2">
-          <Button onClick={onPaid} disabled={busy} className="sheen w-full h-12 rounded-full text-[15.5px] font-semibold" size="lg">
-            {busy ? "Preparing the envelope..." : <>Send it to {draft.recipientName || "them"} · $4.99</>}
-          </Button>
-          <button
-            onClick={onFree}
-            disabled={busy}
-            className="w-full text-center text-[13px] font-medium text-ink/55 hover:text-jade py-2 transition-colors"
+          <Button
+            onClick={onBulkSend}
+            disabled={busy || !bulkReady}
+            className="sheen w-full h-12 rounded-full text-[15px] font-semibold"
+            size="lg"
           >
-            Or send the free version
-          </button>
+            {busy
+              ? "Folding the envelopes..."
+              : covered
+                ? `Send ${bulkRecipients.length} cards · covered by your pack`
+                : `Send ${bulkRecipients.length} cards · $${pack.price}`}
+          </Button>
+          {!bulkReady && bulkRecipients.length > 0 && (
+            <p className="text-center text-[12px] text-ink/45">
+              Every envelope needs a name. Fill in the ones Panda could not guess.
+            </p>
+          )}
         </div>
       ) : (
-        <div className="space-y-2">
-          <Button onClick={onFree} disabled={busy} className="w-full h-12 rounded-full text-[15px] font-semibold" size="lg">
-            {busy ? "Folding the card..." : <>Get my free card link</>}
-          </Button>
-          <p className="text-center text-[12px] text-ink/40">Needs a free account so your cards stay yours</p>
-        </div>
-      )}
-
-      {showAuthGate && (
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-card rounded-3xl p-6 sm:p-8 mt-2"
+        <Button
+          onClick={onPaid}
+          disabled={busy}
+          className="sheen w-full h-12 rounded-full text-[15.5px] font-semibold"
+          size="lg"
         >
-          <p className="text-center font-display font-semibold text-ink text-[17px] mb-1">
-            Almost there. Your card needs a home.
-          </p>
-          <p className="text-center text-[12.5px] text-ink/55 mb-5">
-            A free account keeps your cards, so you can come back to them and watch the opens.
-          </p>
-          <AuthPanel
-            mode="signup"
-            compact
-            onAuthed={() => {
-              onAuthed();
-            }}
-          />
-        </motion.div>
+          {busy
+            ? "Preparing the envelope..."
+            : covered
+              ? `Send it to ${draft.recipientName || "them"} · covered by your pack`
+              : `Send it to ${draft.recipientName || "them"} · $${pack.price}`}
+        </Button>
       )}
-    </div>
-  );
-}
-
-/* Share screen after the free card exists */
-function ShareScreen({ slug, senderName, recipientName }: { slug: string; senderName: string; recipientName: string }) {
-  const [copied, setCopied] = useState(false);
-  const url = typeof window !== "undefined" ? `${window.location.origin}/c/${slug}` : `/c/${slug}`;
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-    } catch {
-      // Older browsers and non-secure contexts: select the text so a
-      // long-press or ctrl-C works.
-      try {
-        const range = document.createRange();
-        const node = document.getElementById("share-url-text");
-        if (node) {
-          range.selectNodeContents(node);
-          const sel = window.getSelection();
-          sel?.removeAllRanges();
-          sel?.addRange(range);
-        }
-      } catch {}
-      toast("Copy did not work here. The link is selected, copy it manually.");
-      return;
-    }
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <div className="min-h-screen bg-ivory relative flex items-center justify-center px-4">
-      <div className="absolute inset-0 bamboo-bg opacity-40" aria-hidden />
-      <motion.div
-        initial={{ opacity: 0, y: 24, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className="relative w-full max-w-lg glass-card rounded-3xl p-8 text-center"
-      >
-        <Envelope theme={getTheme("bamboo-grove")} open={true} width={220} className="mx-auto" />
-        <h1 className="mt-8 font-display font-semibold text-ink text-2xl">
-          {recipientName}&rsquo;s card is ready
-        </h1>
-        <p className="mt-2 text-[14px] text-ink-soft leading-relaxed">
-          The link works anywhere: text, WhatsApp, email, tucked into a note.
-          When {recipientName} opens it, the envelope does its thing.
-        </p>
-
-        <div className="mt-6 flex items-center gap-2 rounded-full border border-ink/15 bg-paper pl-5 pr-2 py-2">
-          <span id="share-url-text" className="flex-1 truncate text-left text-[13px] text-ink/70">{url}</span>
-          <Button onClick={copy} size="sm" className="rounded-full h-9 px-4">
-            {copied ? <><Check className="h-3.5 w-3.5" /> Copied</> : "Copy"}
-          </Button>
-        </div>
-
-        <div className="mt-4 flex flex-wrap justify-center gap-2.5">
-          <a
-            href={`https://wa.me/?text=${encodeURIComponent(`${recipientName}, Panda has something for you: ${url}`)}`}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-full border border-ink/12 bg-paper px-4 py-2.5 text-[13px] font-medium text-ink/80 hover:border-jade/40 hover:text-jade transition-all"
-          >
-            WhatsApp
-          </a>
-          <a
-            href={`sms:?&body=${encodeURIComponent(`${recipientName}, Panda has something for you: ${url}`)}`}
-            className="inline-flex items-center gap-1.5 rounded-full border border-ink/12 bg-paper px-4 py-2.5 text-[13px] font-medium text-ink/80 hover:border-jade/40 hover:text-jade transition-all"
-          >
-            Text
-          </a>
-          <a
-            href={`mailto:?subject=${encodeURIComponent(`Panda has a little something for ${recipientName}`)}&body=${encodeURIComponent(`Open it here: ${url}`)}`}
-            className="inline-flex items-center gap-1.5 rounded-full border border-ink/12 bg-paper px-4 py-2.5 text-[13px] font-medium text-ink/80 hover:border-jade/40 hover:text-jade transition-all"
-          >
-            Email
-          </a>
-        </div>
-
-        <div className="mt-7 p-4 rounded-2xl bg-jade-soft/60 border border-jade/15 text-left">
-          <p className="text-[13px] font-semibold text-ink/85 flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-jade" />
-            One small thing
-          </p>
-          <p className="mt-1 text-[12.5px] text-ink-soft leading-relaxed">
-            This is the free card, so it carries the Panda Messages mark and skips the
-            song and photos. If you ever want the full moment, the $4.99 upgrade
-            lands it in their inbox on a day you pick.
-          </p>
-        </div>
-
-        <div className="mt-6 flex flex-col sm:flex-row gap-2.5">
-          <a
-            href="/dashboard"
-            className="flex-1 inline-flex justify-center items-center rounded-full bg-jade text-white text-[14px] font-semibold py-3 hover:bg-jade-deep transition-colors"
-          >
-            See it in my dashboard
-          </a>
-          <a
-            href="/create"
-            className="flex-1 inline-flex justify-center items-center rounded-full border-2 border-ink/12 text-ink text-[14px] font-semibold py-3 hover:border-ink/30 transition-colors"
-          >
-            Make another
-          </a>
-        </div>
-      </motion.div>
+      <p className="text-center text-[12px] text-ink/45">
+        Secure checkout · cancel before it sends for a full refund
+      </p>
     </div>
   );
 }

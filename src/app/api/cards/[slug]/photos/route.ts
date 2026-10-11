@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sameOrigin } from "@/lib/origin";
 import { getCurrentUser } from "@/lib/auth";
 import { cardOwnedBy, getCardBySlug, logEvent, updateCard } from "@/lib/cards";
 import {
@@ -18,6 +19,12 @@ const MAX_BYTES = 260_000;
  * the reveal page serves every image through its capability URL, never a
  * public bucket domain. */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+  // Cross-site guard: a POST from anywhere but this site is turned away
+  // before it reaches any logic.
+  if (!sameOrigin(req)) {
+    return NextResponse.json({ error: "Not from here." }, { status: 403 });
+  }
+
   try {
     const { slug } = await params;
     const card = await getCardBySlug(slug);

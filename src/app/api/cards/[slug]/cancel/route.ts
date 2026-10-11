@@ -1,13 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { cancelCard, getCardBySlug, cardOwnedBy, logEvent } from "@/lib/cards";
+import {
+  cancelCard,
+  cardOwnedBy,
+  getCardBySlug,
+  grantCredits,
+  getCardById,
+  logEvent,
+} from "@/lib/cards";
 import { stripeRefund } from "@/lib/payments";
+import { sameOrigin } from "@/lib/origin";
 
-/** Cancel a scheduled card. Paid cards get an automatic full refund. */
+/**
+ * Cancel a scheduled card.
+ *
+ * How the money comes back depends on how the card was paid for:
+ *  - bought as a single $5 card: a real refund of that payment.
+ *  - bought inside a pack, or sent on a credit: the card's value returns
+ *    to the account as one credit, ready for the next send. The pack
+ *    purchase itself stays untouched, which is what a person cancelling
+ *    one of five cards actually wants.
+ */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   try {
+    // Cross-site guard: a POST from anywhere but this site is turned away
+    // before it reaches any logic.
+    if (!sameOrigin(req)) {
+      return NextResponse.json({ error: "Not from here." }, { status: 403 });
+    }
+
     const { slug } = await params;
-    const card = await getCardBySlug(slug);
+    const card = (await getCardById(slug)) ?? (await getCardBySlug(slug));
     if (!card) return NextResponse.json({ error: "Card not found." }, { status: 404 });
 
     const user = await getCurrentUser();
@@ -32,14 +55,28 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     await cancelCard(card.id, false);
 
     let refunded = false;
-    if (card.plan === "paid") {
-      refunded = card.checkoutProvider === "stripe" ? await stripeRefund(card.paymentRef ?? "") : true;
-      if (card.checkoutProvider === "mock") refunded = true;
+    let creditBack = false;
+    const fromPack = card.packId === "pack5" || card.packId === "pack15";
+    const onCredit = card.checkoutProvider === "credits";
+
+    if (onCredit || fromPack) {
+      // The value returns where it came from: the pack.
+      if (card.userId) {
+        await grantCredits(card.userId, 1);
+        creditBack = true;
+        await logEvent(card.id, "credit_returned", {});
+      }
+      refunded = true;
+    } else if (card.plan === "paid") {
+      refunded =
+        card.checkoutProvider === "stripe"
+          ? await stripeRefund(card.paymentRef ?? "")
+          : card.checkoutProvider === "mock";
       if (refunded) {
         await logEvent(card.id, "refund", {});
       }
     }
-    return NextResponse.json({ ok: true, refunded });
+    return NextResponse.json({ ok: true, refunded, creditBack });
   } catch (err) {
     console.error("cancel failed", err);
     return NextResponse.json({ error: "Could not cancel that card." }, { status: 500 });

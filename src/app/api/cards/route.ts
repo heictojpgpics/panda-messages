@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sameOrigin } from "@/lib/origin";
 import { getCurrentUser } from "@/lib/auth";
 import { createCard, getCardBySlug, getCardById, cardOwnedBy } from "@/lib/cards";
 import { clientIp, rateLimit } from "@/lib/ratelimit";
@@ -12,6 +13,12 @@ const MAX_PHOTO_BYTES = 260_000; // ~200KB of image, base64 overhead included
 const MAX_BODY_BYTES = 1_600_000; // 5 photos plus change, hard ceiling
 
 export async function POST(req: NextRequest) {
+  // Cross-site guard: a POST from anywhere but this site is turned away
+  // before it reaches any logic.
+  if (!sameOrigin(req)) {
+    return NextResponse.json({ error: "Not from here." }, { status: 403 });
+  }
+
   try {
     // Card spam guard: 20 cards per IP per hour.
     const verdict = await rateLimit(`card:${clientIp(req)}`, 20, 60 * 60 * 1000);

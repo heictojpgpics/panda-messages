@@ -15,13 +15,13 @@ const STEPS = [
   {
     n: 2,
     title: "Watch their card appear",
-    body: "Panda draws it as you type, with their name on the envelope. Free to make, always. The watching part is genuinely fun.",
+    body: "Panda draws it as you type, with their name on the envelope. Free to make and preview, always. The watching part is genuinely fun.",
     panda: "sparkle",
   },
   {
     n: 3,
-    title: "Share it, or let Panda deliver it",
-    body: "Send the link yourself, or have it land in their inbox on the exact morning you pick. Either way, they open an envelope.",
+    title: "Panda carries it to their inbox",
+    body: "It lands on the morning you pick, looking like a delivery because it is one. They tap, the seal cracks, and you know the moment it happens.",
     panda: "delighted",
   },
 ];

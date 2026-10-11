@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sameOrigin } from "@/lib/origin";
 import { getDb } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { waitlist } from "@/lib/db/schema";
@@ -6,6 +7,12 @@ import { isValidEmail, normalizeEmail } from "@/lib/auth";
 import { clientIp, rateLimit } from "@/lib/ratelimit";
 
 export async function POST(req: NextRequest) {
+  // Cross-site guard: a POST from anywhere but this site is turned away
+  // before it reaches any logic.
+  if (!sameOrigin(req)) {
+    return NextResponse.json({ error: "Not from here." }, { status: 403 });
+  }
+
   try {
     const verdict = await rateLimit(`waitlist:${clientIp(req)}`, 5, 60 * 60 * 1000);
     if (!verdict.ok) {

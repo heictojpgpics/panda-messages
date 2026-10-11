@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sameOrigin } from "@/lib/origin";
 import { addReaction, getCardBySlug, getReactionsForCard } from "@/lib/cards";
 import { REACTION_KINDS } from "@/data/signoffs";
 import { newVisitorId } from "@/lib/ids";
@@ -7,6 +8,12 @@ import { clientIp, rateLimit } from "@/lib/ratelimit";
 const KINDS = new Set(REACTION_KINDS.map((k) => k.id as string));
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+  // Cross-site guard: a POST from anywhere but this site is turned away
+  // before it reaches any logic.
+  if (!sameOrigin(req)) {
+    return NextResponse.json({ error: "Not from here." }, { status: 403 });
+  }
+
   try {
     const { slug } = await params;
     const card = await getCardBySlug(slug);

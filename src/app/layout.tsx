@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     template: "%s | Panda Messages",
   },
   description:
-    "Make a personal card in a minute and send it like a gift. A panda brings it to their inbox on the morning you pick. Free to make, $4.99 to surprise them.",
+    "Make a personal card in a minute and send it like a gift. A panda brings it to their inbox on the morning you pick. Free to make and preview, $5 to surprise them.",
   keywords: [
     "panda ecards",
     "personalized cards",

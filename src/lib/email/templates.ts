@@ -102,6 +102,8 @@ export function receiptEmail(opts: {
   themeId?: string;
   /** ISO date the card is scheduled to send, when a day was picked. */
   scheduledFor?: string | null;
+  /** Set when the purchase was a pack, e.g. "Five cards". */
+  packLabel?: string | null;
 }): OutgoingEmail {
   const p = emailPalette(opts.themeId);
   const recipient = opts.recipientName.trim() || "your recipient";
@@ -110,6 +112,9 @@ export function receiptEmail(opts: {
   const sendLine = when
     ? `Panda will carry it to ${recipient} on ${when}.`
     : `Panda is carrying it to ${recipient} right away.`;
+  const packLine = opts.packLabel
+    ? `Your ${opts.packLabel.toLowerCase()} pack is on the account too: every send from it is a full card, whenever you need one.`
+    : "";
 
   const subject = `Your card for ${recipient} is in Panda's care`;
   const preheader = when ? `Panda will carry it on ${when}.` : "Sealed, safe, and on its way.";
@@ -118,6 +123,7 @@ export function receiptEmail(opts: {
     ``,
     `Your ${firstSentenceLower(label)} card for ${recipient} is sealed and in Panda's care. ${sendLine}`,
     ``,
+    ...(packLine ? [packLine, ``] : []),
     `Review or edit it any time: ${opts.dashboardUrl}`,
     ``,
     `Cancel before it sends and the ${SITE.cardPriceLabel} returns in full. Details: ${opts.refundNoteUrl}`,
@@ -136,6 +142,7 @@ export function receiptEmail(opts: {
         `It is sealed, scheduled, and safe. ${escapeHtml(sendLine)} You can change the words or the day any time before it leaves.`,
         p
       ),
+      ...(packLine ? [paragraph(escapeHtml(packLine), p)] : []),
       metaTable(
         [
           ["For", recipient],

@@ -44,6 +44,8 @@ interface DashCard {
   theme: string;
   hasSong: boolean;
   photoCount: number;
+  batchId: string | null;
+  packId: string | null;
 }
 
 interface DashEvent {
@@ -132,6 +134,7 @@ function Dashboard() {
   const [events, setEvents] = useState<DashEvent[]>([]);
   const [outbox, setOutbox] = useState<OutboxMail[]>([]);
   const [user, setUser] = useState<{ email: string; name: string | null } | null>(null);
+  const [credits, setCredits] = useState(0);
   const [tab, setTab] = useState<Tab>(watchSlug ? "cards" : "cards");
 
   const load = useCallback(async () => {
@@ -147,6 +150,7 @@ function Dashboard() {
       setEvents(data.events ?? []);
       setOutbox(data.outbox ?? []);
       setUser(data.user ?? null);
+      setCredits(data.credits ?? 0);
       setAuthed(true);
     } finally {
       setLoaded(true);
@@ -218,6 +222,15 @@ function Dashboard() {
             <Logo />
           </div>
           <div className="flex items-center gap-2.5">
+            {credits > 0 && (
+              <span
+                title="Paid cards waiting to be sent"
+                className="inline-flex items-center gap-1.5 rounded-full bg-jade-soft border border-jade/25 text-jade text-[12.5px] font-semibold px-3.5 py-2"
+              >
+                <span className="grid h-4.5 w-4.5 place-items-center rounded-full bg-jade text-white text-[10px] font-bold">{credits}</span>
+                card credit{credits === 1 ? "" : "s"}
+              </span>
+            )}
             <span className="hidden sm:block text-[12.5px] text-ink/50">{user?.email}</span>
             <Link
               href="/create"
@@ -436,7 +449,13 @@ function CardRow({ card, onChange }: { card: DashCard; onChange: () => void }) {
               Take back the card for {card.recipientName}?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-left text-[13.5px] leading-relaxed">
-              They never see it, and the {card.plan === "paid" ? "$4.99 returns in full" : "card is simply unmade"}.
+              They never see it, and the{" "}
+              {card.plan === "paid"
+                ? card.packId && card.packId !== "single"
+                  ? "card goes back to your pack as a credit"
+                  : "full amount returns"
+                : "card is simply unmade"}
+              .
               This cannot be undone, but a new card is always a minute away.
             </AlertDialogDescription>
           </AlertDialogHeader>

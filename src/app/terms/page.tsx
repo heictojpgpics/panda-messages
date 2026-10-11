@@ -18,7 +18,7 @@ const SECTIONS: { h: string; body: string[] }[] = [
   {
     h: "Your account",
     body: [
-      "You can make cards without an account, but free cards are kept for you when you create one, and paid cards are always attached to the email you pay from.",
+      "You can make and preview cards without an account. Cards you pay for are always attached to the email you pay from, and every card you buy stays on that account as a credit until you send it.",
       "Keep your password to yourself. You can close your account any time by writing to support, and we will remove your data from our active systems.",
     ],
   },
@@ -32,7 +32,7 @@ const SECTIONS: { h: string; body: string[] }[] = [
   {
     h: "Paying",
     body: [
-      "The full card costs $4.99, once, at the moment of checkout. Prices may change one day, but never for a card you already paid for.",
+      "Cards come in packs: $5 for one, $20 for five, $50 for fifteen, paid once at checkout. Prices may change one day, but never for credits you already bought.",
       "Payments are processed by our payment provider. We never see or store your card details.",
     ],
   },
@@ -45,7 +45,7 @@ const SECTIONS: { h: string; body: string[] }[] = [
   {
     h: "Liability, gently",
     body: [
-      "We aim for a service that just works, but no service is perfect. Our liability for anything that goes wrong is limited to what you paid us, which for a $4.99 card is exactly that.",
+      "We aim for a service that just works, but no service is perfect. Our liability for anything that goes wrong is limited to what you paid us, which for a single card is exactly that.",
     ],
   },
   {

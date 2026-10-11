@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sameOrigin } from "@/lib/origin";
 import { getCardBySlug, recordView } from "@/lib/cards";
 import { newVisitorId } from "@/lib/ids";
 
@@ -7,6 +8,12 @@ import { newVisitorId } from "@/lib/ids";
  * One view per actual open: page renders never call this, only the tap.
  */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+  // Cross-site guard: a POST from anywhere but this site is turned away
+  // before it reaches any logic.
+  if (!sameOrigin(req)) {
+    return NextResponse.json({ error: "Not from here." }, { status: 403 });
+  }
+
   const { slug } = await params;
   const card = await getCardBySlug(slug);
   if (!card) return NextResponse.json({ error: "Card not found." }, { status: 404 });
