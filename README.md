@@ -4,7 +4,7 @@ A personal card, made in a minute, delivered like a gift on the morning you pick
 
 Panda Messages is a production-grade alternative to kitty-card services: you pick an occasion,
 write your words (or let Panda write them), attach a song and photos, choose from 14 themes, and
-either share the link yourself for free or have Panda deliver it to their inbox for $4.99, once,
+make and preview it for free, then have Panda deliver it to their inbox. Cards come in packs: 1 for $5, 5 for $20, 15 for $50,
 on the day you choose. The recipient opens an envelope, the card rises out, and the sender
 watches the whole thing happen live.
 
@@ -20,8 +20,10 @@ watches the whole thing happen live.
 - A 4-step card wizard: occasion → names → words/wrapping → delivery, with a live preview,
   message seeds in Panda's voice, YouTube song attach, up to 5 photos (compressed client-side),
   and 14 themes
-- Free path: watermark card, self-share link, needs a free account
-- Paid path ($4.99): no watermark, all 14 themes, song, photos, scheduled email delivery,
+- Free to make and preview, always
+- Paid sends ($5 single, $20 five-pack, $50 fifteen-pack): no watermark, all 14 themes, song, photos, scheduled email delivery
+- Bulk sending: paste up to 15 emails, everyone gets their own addressed envelope from one payment
+- Pack credits live on the account and never expire; cancelling a pack card returns the credit
   edit/cancel before send with full refund
 - A dashboard with live watching: delivery, open, reaction and reply events stream in over SSE
 
@@ -125,7 +127,7 @@ Both `bun.lock` and `package-lock.json` are committed, so `npm install` and
 
 ## Pricing philosophy
 
-Free to make, always. $4.99 once for the full card: no watermark, all themes, song, photos,
+Free to make and preview, always. Every paid card is the full card: no watermark, all themes, song, photos,
 scheduled delivery, live watching, replayable forever. Panda Remembers (birthday reminders)
 will be $19 a year. Cancel before send = automatic full refund. No subscriptions, no dark
 patterns.

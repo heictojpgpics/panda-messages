@@ -59,7 +59,7 @@ The command first verifies that the `database_id` already committed in
 `wrangler.toml` resolves to the expected `panda-messages` database. It fails
 closed if it does not, rather than creating a second empty database. It then
 ensures `panda-message-photos` exists, disables its `r2.dev` public URL,
-applies the committed D1 migration, repairs the two additive columns needed by
+applies the committed D1 migrations (0001 initial schema, 0002 packs and credits), repairs the additive columns needed by
 legacy databases, and verifies the core tables. It requires
 `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` only on the terminal or CI
 runner that executes it.
