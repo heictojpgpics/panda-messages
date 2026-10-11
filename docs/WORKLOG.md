@@ -251,3 +251,23 @@ inside stays hidden on purpose. The curiosity gap is the product.
 - All ten replacement portraits are 640 × 800 transparent PNGs. The original four email portraits and all fourteen seal assets also retain alpha channels.
 - `npm run email:preview` now renders the complete 45-email matrix to `artifacts/email-previews` without external or machine-specific paths.
 - Matrix HTML ranges from 8KB to 10KB and contains no unresolved `undefined`, `NaN`, or local author-machine path values.
+
+## Interaction and delivery audit, 2026-10-11 (v3)
+
+### Findings and changes
+
+- The examples section held three fixed-width cards inside a desktop-sized area, leaving a misleading empty fourth slot. It now has four examples and resolves to a balanced four-column layout on wide screens while keeping a snap carousel on narrow screens.
+- The live delivery mock continued cycling while off screen and grew when its final state appeared. Its timer now starts only while the section is near the viewport, cleans up when it leaves, and reserves the opened-state area so content below it does not shift.
+- The post-open ambient layer was attached to the viewport, so motifs kept falling over unrelated content and read like a single vertical stream. It is now scoped to the card scene, begins only after the card has settled, is less dense, and fades in and out along the path.
+- Removed the free self-publish path from both the composer and API. Preview remains free; a card can only become live through checkout. The individual price is now $5 across checkout, policy, SEO, and landing copy.
+- The compose preview now shows the paid experience, all themes are selectable without a misleading lock state, and the delivery step has one clear path instead of competing send options.
+- Reworked the reply/reaction surface toward a calmer card-like control area: resilient labels, larger touch targets, one clear reply action, and recipient-name language that does not ask them to identify themselves again.
+- Moved the optional hero Panda portrait out of the centered reading path on desktop. The headline now holds the first screen without visual displacement.
+- Added baseline response-security headers: frame denial, MIME sniffing protection, a conservative permissions policy, and a cross-origin referrer policy.
+
+### Verification
+
+- Reviewed the supplied reference screenshots and a sampled video frame before changing card and action hierarchy.
+- `npm run lint` passes.
+- `npm run build` passes with the production optimizer and TypeScript checks.
+- `git diff --check` passes.

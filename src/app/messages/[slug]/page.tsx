@@ -98,7 +98,7 @@ export default async function LibraryDetail({ params }: { params: Promise<{ slug
                   <Sparkles className="h-4 w-4" />
                   Make the card
                 </Link>
-                <p className="mt-2.5 text-[11.5px] text-ink/40">Free to make · $4.99 to deliver it</p>
+                <p className="mt-2.5 text-[11.5px] text-ink/40">Preview it free · $5 to deliver it</p>
               </div>
               <div className="hidden sm:block">
                 <MiniCard

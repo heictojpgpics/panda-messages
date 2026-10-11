@@ -301,8 +301,10 @@
 /* Card-view weather: fall on the outer layer, sway on the inner one.
    Two nested animations walk a sinusoidal path with no JS per frame. */
 @keyframes drift-fall {
-  0% { transform: translate3d(0, -10vh, 0); }
-  100% { transform: translate3d(0, 110vh, 0); }
+  0% { transform: translate3d(0, -14%, 0); opacity: 0; }
+  8% { opacity: var(--drift-opacity, 0.3); }
+  86% { opacity: var(--drift-opacity, 0.3); }
+  100% { transform: translate3d(0, 116%, 0); opacity: 0; }
 }
 .drift-fall {
   animation-name: drift-fall;

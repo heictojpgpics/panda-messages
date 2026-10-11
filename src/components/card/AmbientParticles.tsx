@@ -301,7 +301,7 @@ export function AmbientDrift({
 
   return (
     <div
-      className="pointer-events-none fixed inset-0 z-[5] overflow-hidden drift-mask"
+      className="pointer-events-none absolute inset-0 z-[5] overflow-hidden drift-mask"
       aria-hidden
     >
       {pieces.map((p, i) => (
@@ -314,8 +314,9 @@ export function AmbientDrift({
               fontSize: p.size,
               animationDuration: `${p.duration}s`,
               animationDelay: `${p.delay}s`,
+              animationPlayState: "running",
+              "--drift-opacity": [0.16, 0.3, 0.44][p.depth],
               // depth: farther pieces are dimmer, the nearest ones softly out of focus
-              opacity: [0.16, 0.3, 0.44][p.depth],
               filter: p.depth === 2 ? "blur(1.1px)" : p.depth === 0 ? "blur(0.4px)" : undefined,
             } as React.CSSProperties
           }

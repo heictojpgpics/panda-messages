@@ -15,7 +15,7 @@ const STEPS = [
   {
     n: 2,
     title: "Watch their card appear",
-    body: "Panda draws it as you type, with their name on the envelope. Free to make, always. The watching part is genuinely fun.",
+    body: "Panda draws it as you type, with their name on the envelope. Preview every detail before checkout. The watching part is genuinely fun.",
     panda: "sparkle",
   },
   {

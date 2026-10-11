@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PandaMoodFace } from "@/components/brand/PandaMood";
 import { cn } from "@/lib/utils";
@@ -21,8 +21,22 @@ const STEPS: { id: Phase; label: string; detail: string; emoji: string }[] = [
 
 export function LiveWatch() {
   const [phase, setPhase] = useState<Phase>("scheduled");
+  const [isVisible, setIsVisible] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
+    const element = sectionRef.current;
+    if (!element) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsVisible(entry.isIntersecting),
+      { rootMargin: "120px 0px", threshold: 0.08 }
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!isVisible) return;
     const cycle = {
       t1: 0 as ReturnType<typeof setTimeout> | 0,
       t2: 0 as ReturnType<typeof setTimeout> | 0,
@@ -40,12 +54,12 @@ export function LiveWatch() {
       clearTimeout(cycle.t1);
       clearTimeout(cycle.t2);
     };
-  }, []);
+  }, [isVisible]);
 
   const activeIndex = STEPS.findIndex((s) => s.id === phase);
 
   return (
-    <section className="relative overflow-hidden">
+    <section ref={sectionRef} className="relative overflow-hidden">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-20 sm:py-24">
         <div className="grid md:grid-cols-2 gap-14 items-center">
           <div className="text-center md:text-left order-2 md:order-1">
@@ -74,7 +88,7 @@ export function LiveWatch() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-80px" }}
               transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-              className="glass-card rounded-3xl p-6 sm:p-8 max-w-sm mx-auto"
+              className="glass-card relative min-h-[372px] rounded-3xl p-6 sm:p-8 max-w-sm mx-auto"
             >
               <div className="flex items-center gap-4 pb-5 border-b border-ink/8">
                 <PandaMoodFace mood={phase === "opened" ? "delighted" : phase === "delivered" ? "wink" : "sleepy"} size={58} />
@@ -154,7 +168,7 @@ export function LiveWatch() {
                     initial={{ opacity: 0, y: 10, height: 0 }}
                     animate={{ opacity: 1, y: 0, height: "auto" }}
                     exit={{ opacity: 0, y: -6, height: 0 }}
-                    className="overflow-hidden"
+                    className="absolute inset-x-6 bottom-6 overflow-hidden sm:inset-x-8 sm:bottom-8"
                   >
                     <div className="mt-5 rounded-2xl bg-blush-soft/70 border border-blush/20 px-4 py-3.5 flex items-center gap-3">
                       <span className="text-lg" aria-hidden>💗</span>

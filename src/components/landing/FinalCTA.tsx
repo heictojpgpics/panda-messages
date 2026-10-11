@@ -33,7 +33,7 @@ export function FinalCTA() {
             Send a Panda card
           </Link>
           <p className="mt-3.5 text-[12.5px] text-ink/45">
-            Free to make · about a minute · they will tell people about it
+            Free to preview · about a minute · they will tell people about it
           </p>
         </motion.div>
       </div>

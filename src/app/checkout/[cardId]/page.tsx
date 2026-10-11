@@ -325,7 +325,7 @@ export default function CheckoutPage() {
                   ) : (
                     <>
                       <Lock className="h-4 w-4" />
-                      Pay $4.99
+                      Pay $5
                     </>
                   )}
                 </Button>

@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     template: "%s | Panda Messages",
   },
   description:
-    "Make a personal card in a minute and send it like a gift. A panda brings it to their inbox on the morning you pick. Free to make, $4.99 to surprise them.",
+    "Make a personal card in a minute and send it like a gift. A panda brings it to their inbox on the morning you pick. Preview free, $5 to surprise them.",
   keywords: [
     "panda ecards",
     "personalized cards",
@@ -55,7 +55,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Panda Messages",
-    description: "Cute panda cards that feel like a hug. Free to make.",
+    description: "Cute panda cards that feel like a hug. Preview every detail before checkout.",
     images: ["/og.png"],
   },
   icons: {

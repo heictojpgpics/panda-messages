@@ -6,8 +6,8 @@ export interface FaqItem {
 
 export const FAQS: FaqItem[] = [
   {
-    q: "Is there a free version?",
-    a: "Yes, and it is genuinely free. You make the card, we give you the link, you share it however you like. The card carries a small pandamessages.com line at the bottom. If you ever want that gone, plus the delivery and the songs and the photos, that is the $4.99 card.",
+    q: "Can I see it before I pay?",
+    a: "Yes. Build the card, open the preview, and check every detail before checkout. Panda sends it only after you choose delivery.",
   },
   {
     q: "Does the person I send it to need an account?",
@@ -31,11 +31,11 @@ export const FAQS: FaqItem[] = [
   },
   {
     q: "Can I send it myself instead?",
-    a: "Absolutely. The free card is exactly that: you share the link by text, WhatsApp, carrier pigeon. The paid version is for when you want it to arrive on its own, on the day, like a proper surprise.",
+    a: "Every card is delivered through Panda so we can protect the private link, track delivery, and keep the moment complete. You can choose the day it arrives.",
   },
   {
     q: "Is there a subscription?",
-    a: "No. $4.99 per card, once, when you want it. The only recurring thing anywhere will be Panda Remembers, the optional birthday service, planned at $19 a year with cancel any time.",
+    a: "No. It is $5 per card, once, when you want it. The only recurring thing anywhere will be Panda Remembers, the optional birthday service, planned at $19 a year with cancel any time.",
   },
   {
     q: "How long does it take to make one?",

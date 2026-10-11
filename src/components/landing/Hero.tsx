@@ -174,8 +174,8 @@ export function Hero() {
       </div>
 
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6 pt-28 sm:pt-32 pb-16">
-        {/* A small wardrobe of hand-painted delivery portraits, not a repeated stock mascot. */}
-        <div className="flex justify-center mb-2">
+        {/* Kept beside the title on wide screens so the first sentence is never pushed down. */}
+        <div className="hidden lg:flex absolute right-8 top-20 justify-center">
           <motion.button
             type="button"
             onClick={switchPortrait}
@@ -198,7 +198,7 @@ export function Hero() {
               >
                 <PandaMoodFace
                   mood={HERO_PORTRAITS[portrait]}
-                  size={126}
+                  size={112}
                   alt="Panda, your card deliverer"
                   className="drop-shadow-[0_10px_24px_rgba(22,36,28,0.25)]"
                 />
@@ -254,7 +254,7 @@ export function Hero() {
               <p className="text-[13px] text-ink/60 mb-3">
                 Tell Panda the occasion:{" "}
                 <Link href="/#pricing" className="text-jade font-semibold link-pretty">
-                  making a card is free
+                  preview is free
                 </Link>{" "}
                 💚
               </p>
@@ -369,7 +369,7 @@ export function Hero() {
                 Surprise me
               </button>
               <p className="mt-2.5 text-center text-[11.5px] italic text-ink/40">
-                Free to make · takes about a minute
+                Preview free · takes about a minute
               </p>
             </motion.div>
           </div>

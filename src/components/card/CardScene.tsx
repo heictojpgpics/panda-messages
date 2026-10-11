@@ -129,9 +129,9 @@ export function CardScene({
         background: `radial-gradient(1200px 800px at 50% -10%, ${theme.colors.page}, ${theme.colors.paper} 60%)`,
       }}
     >
-      {/* The weather. Present from the start (very sparse), settling in
-          fully once the card is out. Masked away from the header. */}
-      <AmbientDrift motif={motif} reduce={Boolean(reduce)} count={phase === "card" ? undefined : 7} />
+      {/* Let the envelope own the first beat. The themed weather begins only
+          after the card has settled, inside this scene rather than the page. */}
+      {phase === "card" && <AmbientDrift motif={motif} reduce={Boolean(reduce)} count={11} />}
 
       {/* The celebration, timed to the letter clearing the pocket. */}
       <AnimatePresence>
@@ -541,7 +541,7 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
     >
       <ReactionBursts bursts={bursts} />
 
-      <div className="rounded-[26px] border border-ink/[0.08] bg-paper/85 p-4 shadow-[0_18px_45px_-34px_rgba(22,36,28,0.65)] backdrop-blur-sm sm:p-5">
+      <div className="rounded-[26px] border border-ink/[0.08] bg-paper/90 p-4 shadow-[0_18px_45px_-34px_rgba(22,36,28,0.65)] backdrop-blur-sm sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[13.5px] font-semibold text-ink">Leave a little feeling behind</p>
@@ -554,10 +554,7 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
           </span>
         </div>
 
-        {/* Reactions: three across on a phone, six on a desk. Labels are
-            never truncated, they wrap to a second line and every button
-            keeps the same height. */}
-        <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
+        <div className="mt-4 grid grid-cols-3 gap-2.5 sm:grid-cols-6">
           {REACTION_KINDS.map((r) => {
             const count = reacted[r.id] ?? 0;
             const sent = sentKinds.has(r.id);
@@ -575,7 +572,7 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
                 animate={popped ? { y: [0, -3, 0] } : { y: 0 }}
                 transition={{ type: "spring", stiffness: 420, damping: 18 }}
                 className={cn(
-                  "group relative flex min-h-[74px] flex-col items-center justify-center gap-1 rounded-2xl border px-1 py-2 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-jade/45",
+                  "group relative flex min-h-[78px] flex-col items-center justify-center gap-1.5 rounded-2xl border px-1.5 py-2.5 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-jade/45",
                   sent
                     ? "border-jade/35 bg-jade/[0.09] text-jade"
                     : "border-ink/[0.09] bg-white/75 text-ink/70 hover:-translate-y-0.5 hover:border-blush/40 hover:shadow-[0_8px_18px_-12px_rgba(22,36,28,0.5)] active:translate-y-0"
@@ -589,7 +586,7 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
                 >
                   {r.emoji}
                 </motion.span>
-                <span className="flex min-h-[26px] items-center px-0.5 text-center text-[10.5px] font-semibold leading-[1.2] sm:text-[11px]">
+                <span className="flex min-h-[26px] items-center px-0.5 text-center text-[10px] font-semibold leading-[1.2] sm:text-[10.5px]">
                   {r.label}
                 </span>
                 <AnimatePresence>
@@ -631,7 +628,7 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
                 <div className="flex items-center gap-2.5">
                   <span className="grid h-8 w-8 place-items-center rounded-full bg-blush/10 text-sm" aria-hidden>✍️</span>
                   <div>
-                    <p className="text-[13px] font-semibold text-ink">A note from {data.recipientName}</p>
+                    <p className="text-[13px] font-semibold text-ink">A note for {data.senderName}</p>
                     <p className="text-[11px] text-ink/45">It goes straight back to {data.senderName}.</p>
                   </div>
                 </div>
@@ -677,14 +674,14 @@ function AfterCard({ data, slug, onReplay }: { data: CardSceneData; slug: string
                   className="sheen inline-flex items-center justify-center gap-2 rounded-2xl bg-jade px-4 py-3.5 text-[13px] font-semibold text-white shadow-[0_10px_24px_-10px_rgba(21,122,85,0.65)] hover:bg-jade-deep transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-jade/35 focus-visible:ring-offset-2"
                 >
                   <span aria-hidden>✍️</span>
-                  <span>Write {data.senderName} back</span>
+                  <span>Write {data.senderName} a note</span>
                 </button>
                 <a
                   href={`/create?replyTo=${slug}&to=${encodeURIComponent(data.senderName)}`}
                   className="inline-flex items-center justify-center gap-2 rounded-2xl border border-ink/12 bg-white px-4 py-3.5 text-[13px] font-semibold text-ink/75 hover:border-jade/40 hover:text-jade transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-jade/35 focus-visible:ring-offset-2"
                 >
                   <span aria-hidden>🐼</span>
-                  <span>Send a card back</span>
+                  <span>Send a card in return</span>
                 </a>
               </div>
             )

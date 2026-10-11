@@ -40,6 +40,18 @@ const EXAMPLES = [
     },
     caption: "Just because · example",
   },
+  {
+    data: {
+      occasion: "birthday",
+      recipientName: "Leila",
+      senderName: "Owen",
+      message: "This day is a very good excuse to say it: the world is better with you in it. Cake is only the beginning.",
+      signoff: "saving you the biggest slice, Panda 💚",
+      theme: "birthday-bash",
+      watermark: false,
+    },
+    caption: "Birthday · example",
+  },
 ];
 
 export function ExamplesSection() {
@@ -54,20 +66,20 @@ export function ExamplesSection() {
           </h2>
           <p className="mt-3 text-ink-soft">
             Their name on the envelope, your words in the letter, a theme you picked
-            because it is so them. Here are three, exactly as they arrive.
+            because it is so them. Here are four, exactly as they arrive.
           </p>
         </div>
 
         <div
           ref={scrollRef}
-          className="mt-12 flex gap-6 overflow-x-auto pb-4 no-scrollbar snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0"
+          className="mt-12 grid auto-cols-[280px] grid-flow-col gap-6 overflow-x-auto pb-4 no-scrollbar snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:auto-cols-auto sm:grid-flow-row sm:grid-cols-2 sm:px-0 lg:grid-cols-4"
         >
           {EXAMPLES.map((ex, i) => (
             <div
               key={i}
-              className="snap-center shrink-0 w-[280px] sm:w-[300px] flex flex-col items-center gap-3"
+              className="snap-center w-[280px] sm:w-auto flex flex-col items-center gap-3"
             >
-              <div style={{ transform: `rotate(${i === 1 ? 0 : i === 0 ? -1.5 : 1.5}deg)` }}>
+              <div style={{ transform: `rotate(${i === 1 ? 0 : i % 2 === 0 ? -1.5 : 1.5}deg)` }}>
                 <MiniCard data={ex.data} />
               </div>
               <p className="text-[12px] text-ink/45">{ex.caption}</p>

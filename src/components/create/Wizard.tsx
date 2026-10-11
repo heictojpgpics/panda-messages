@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { OCCASIONS, getOccasion, occasionLabel } from "@/data/occasions";
-import { THEMES, FREE_THEMES } from "@/data/themes";
+import { THEMES } from "@/data/themes";
 import { MESSAGE_SEEDS } from "@/data/messages";
 import { defaultSignoff } from "@/data/signoffs";
 import { MiniCard } from "@/components/brand/MiniCard";
@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { compressPhoto, extractYouTubeId, PHOTO_LIMITS } from "@/lib/photo";
 import {
   ArrowLeft, ArrowRight, Shuffle, Music, Camera, Lock, X, Sparkles,
-  Calendar, Mail, Link2, PartyPopper, Check, Eye,
+  Calendar, Mail, PartyPopper, Check, Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { OpenPreview } from "./OpenPreview";
 import { Envelope } from "@/components/brand/Envelope";
-import { AuthPanel } from "@/components/auth/AuthPanel";
 import { getTheme } from "@/data/themes";
 import { toast } from "sonner";
 import { readDraftMemory, readEditToken, useCardMemoryStore } from "@/stores/card-memory";
@@ -93,14 +92,9 @@ export function Wizard() {
   );
 
   // Delivery state (step 4)
-  const [delivery, setDelivery] = useState<"panda" | "self">("panda");
   const [when, setWhen] = useState<"now" | "day">("now");
   const [date, setDate] = useState("");
   const [recipientEmail, setRecipientEmail] = useState("");
-  const [freeAuthed, setFreeAuthed] = useState(false);
-  const [showAuthGate, setShowAuthGate] = useState(false);
-  const [freeCardSlug, setFreeCardSlug] = useState<string | null>(null);
-  const [freeShare, setFreeShare] = useState(false);
   const saveDraftMemory = useCardMemoryStore((state) => state.saveDraft);
   const clearDraftMemory = useCardMemoryStore((state) => state.clearDraft);
   const rememberEditToken = useCardMemoryStore((state) => state.rememberEditToken);
@@ -290,7 +284,7 @@ export function Wizard() {
           slug,
           cardId,
           editToken,
-          recipientEmail: delivery === "panda" ? recipientEmail : null,
+          recipientEmail,
           deliverAt,
         }),
       });
@@ -305,46 +299,15 @@ export function Wizard() {
     }
   };
 
-  const sendFree = async () => {
-    // Free cards need an owner so they stay editable and watchable.
-    if (!freeAuthed) {
-      const me = await fetch("/api/auth/me").then((r) => (r.ok ? r.json() : { user: null })).catch(() => ({ user: null }));
-      if (!me.user) {
-        setShowAuthGate(true);
-        toast("One tiny account, so your card stays yours. Thirty seconds.");
-        return;
-      }
-      setFreeAuthed(true);
-    }
-    setBusy(true);
-    try {
-      const card = await createCard();
-      if (!card) return;
-      if (card.editToken) saveEditToken(card.slug, card.editToken, card.id);
-      await fetch(`/api/cards/${card.slug}/finalize-free`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ editToken: card.editToken }),
-      }).catch(() => {});
-      setFreeCardSlug(card.slug);
-      setFreeShare(true);
-      clearDraftMemory(DRAFT_MEMORY_KEY);
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const paidSend = async () => {
-    if (delivery === "panda") {
-      const email = recipientEmail.trim();
-      if (!email) {
-        toast("Where should Panda bring it? Their email is needed.");
-        return;
-      }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
-        toast("That email does not look right. Check it once more?");
-        return;
-      }
+    const email = recipientEmail.trim();
+    if (!email) {
+      toast("Where should Panda bring it? Their email is needed.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+      toast("That email does not look right. Check it once more?");
+      return;
     }
     if (when === "day" && !date) {
       toast("Pick the day Panda should send it.");
@@ -361,11 +324,6 @@ export function Wizard() {
       setBusy(false);
     }
   };
-
-  // ---------- free share screen ----------
-  if (freeShare && freeCardSlug) {
-    return <ShareScreen slug={freeCardSlug} senderName={draft.senderName} recipientName={draft.recipientName} />;
-  }
 
   const canNext =
     (step === 0 && (occasion || draft.customOccasion)) ||
@@ -530,8 +488,6 @@ export function Wizard() {
                     draft={draft}
                     signoff={signoff}
                     songId={songId}
-                    delivery={delivery}
-                    setDelivery={setDelivery}
                     when={when}
                     setWhen={setWhen}
                     date={date}
@@ -540,14 +496,7 @@ export function Wizard() {
                     setRecipientEmail={setRecipientEmail}
                     onPreview={() => setPreviewOpen(true)}
                     onPaid={paidSend}
-                    onFree={sendFree}
                     busy={busy}
-                    showAuthGate={showAuthGate && !freeShare}
-                    onAuthed={() => {
-                      setFreeAuthed(true);
-                      setShowAuthGate(false);
-                      sendFree();
-                    }}
                   />
                 ) : null}
               </motion.div>
@@ -624,7 +573,7 @@ export function Wizard() {
           songId,
           photos: draft.photos,
           watermark: true,
-          plan: "free",
+          plan: "paid",
         }}
         occasionLabel={effectiveOccasionLabel}
       />
@@ -917,16 +866,12 @@ function MessageStep({
         <p className="text-[13.5px] font-medium text-ink/80">Choose a theme for them</p>
         <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
           {THEMES.map((t) => {
-            const free = FREE_THEMES.includes(t.id);
             const active = draft.theme === t.id;
             return (
               <button
                 key={t.id}
                 onClick={() => {
                   set("theme", t.id);
-                  if (!free) {
-                    toast(`${t.name} rides along with the full card. Pick it freely, it locks in when you pay.`);
-                  }
                 }}
                 title={t.blurb}
                 className={cn(
@@ -935,11 +880,6 @@ function MessageStep({
                 )}
                 aria-pressed={active}
               >
-                {!free && (
-                  <span className="absolute -top-1 -right-1 grid h-4 w-4 place-items-center rounded-full bg-gold/90 text-white" aria-hidden>
-                    <Lock className="h-2.5 w-2.5" />
-                  </span>
-                )}
                 <EnvelopeChip theme={t} size={48} />
                 <span className="text-[9.5px] font-medium text-ink/70 leading-none text-center">{t.name.split(" ")[0]}</span>
               </button>
@@ -961,8 +901,6 @@ function ReadyStep({
   draft,
   signoff,
   songId,
-  delivery,
-  setDelivery,
   when,
   setWhen,
   date,
@@ -971,16 +909,11 @@ function ReadyStep({
   setRecipientEmail,
   onPreview,
   onPaid,
-  onFree,
   busy,
-  showAuthGate,
-  onAuthed,
 }: {
   draft: Draft;
   signoff: string;
   songId: string | null;
-  delivery: "panda" | "self";
-  setDelivery: (v: "panda" | "self") => void;
   when: "now" | "day";
   setWhen: (v: "now" | "day") => void;
   date: string;
@@ -989,10 +922,7 @@ function ReadyStep({
   setRecipientEmail: (v: string) => void;
   onPreview: () => void;
   onPaid: () => void;
-  onFree: () => void;
   busy: boolean;
-  showAuthGate: boolean;
-  onAuthed: () => void;
 }) {
   return (
     <div className="mt-7 max-w-xl space-y-6">
@@ -1015,14 +945,7 @@ function ReadyStep({
       <div className="space-y-3">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/45">How it reaches them</p>
 
-        <button
-          onClick={() => setDelivery("panda")}
-          className={cn(
-            "w-full rounded-2xl border-2 px-5 py-4 text-left transition-all",
-            delivery === "panda" ? "border-jade bg-jade-soft/40" : "border-ink/10 bg-paper hover:border-ink/20"
-          )}
-          aria-pressed={delivery === "panda"}
-        >
+        <div className="w-full rounded-2xl border-2 border-jade bg-jade-soft/40 px-5 py-4 text-left">
           <span className="flex items-start gap-3.5">
             <Mail className="h-5 w-5 mt-0.5 text-jade shrink-0" />
             <span className="flex-1">
@@ -1034,14 +957,13 @@ function ReadyStep({
                 It lands in their inbox on the morning you pick, and they open it like a gift they never saw coming.
               </span>
             </span>
-            <span className={cn("grid h-5 w-5 place-items-center rounded-full border-2 shrink-0", delivery === "panda" ? "border-jade bg-jade" : "border-ink/25")}>
-              {delivery === "panda" && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+            <span className="grid h-5 w-5 place-items-center rounded-full border-2 border-jade bg-jade shrink-0">
+              <Check className="h-3 w-3 text-white" strokeWidth={3} />
             </span>
           </span>
-        </button>
+        </div>
 
-        {delivery === "panda" && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="overflow-hidden pl-2">
+          <div className="pl-2">
             <div className="space-y-4 pt-1">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-[13px] font-medium text-ink/75">
@@ -1092,75 +1014,16 @@ function ReadyStep({
                 </div>
               )}
             </div>
-          </motion.div>
-        )}
+          </div>
 
-        <button
-          onClick={() => setDelivery("self")}
-          className={cn(
-            "w-full rounded-2xl border-2 px-5 py-4 text-left transition-all",
-            delivery === "self" ? "border-jade bg-jade-soft/40" : "border-ink/10 bg-paper hover:border-ink/20"
-          )}
-          aria-pressed={delivery === "self"}
-        >
-          <span className="flex items-start gap-3.5">
-            <Link2 className="h-5 w-5 mt-0.5 text-jade shrink-0" />
-            <span className="flex-1">
-              <span className="text-[14.5px] font-semibold text-ink">I&rsquo;ll share the link</span>
-              <span className="block text-[12.5px] text-ink-soft mt-1 leading-relaxed">
-                The free version, carried by you. Keeps the watermark and Bamboo Grove.
-              </span>
-            </span>
-            <span className={cn("grid h-5 w-5 place-items-center rounded-full border-2 shrink-0", delivery === "self" ? "border-jade bg-jade" : "border-ink/25")}>
-              {delivery === "self" && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
-            </span>
-          </span>
-        </button>
       </div>
 
-      {delivery === "panda" ? (
-        <div className="space-y-2">
-          <Button onClick={onPaid} disabled={busy} className="sheen w-full h-12 rounded-full text-[15.5px] font-semibold" size="lg">
-            {busy ? "Preparing the envelope..." : <>Send it to {draft.recipientName || "them"} · $4.99</>}
-          </Button>
-          <button
-            onClick={onFree}
-            disabled={busy}
-            className="w-full text-center text-[13px] font-medium text-ink/55 hover:text-jade py-2 transition-colors"
-          >
-            Or send the free version
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <Button onClick={onFree} disabled={busy} className="w-full h-12 rounded-full text-[15px] font-semibold" size="lg">
-            {busy ? "Folding the card..." : <>Get my free card link</>}
-          </Button>
-          <p className="text-center text-[12px] text-ink/40">Needs a free account so your cards stay yours</p>
-        </div>
-      )}
-
-      {showAuthGate && (
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-card rounded-3xl p-6 sm:p-8 mt-2"
-        >
-          <p className="text-center font-display font-semibold text-ink text-[17px] mb-1">
-            Almost there. Your card needs a home.
-          </p>
-          <p className="text-center text-[12.5px] text-ink/55 mb-5">
-            A free account keeps your cards, so you can come back to them and watch the opens.
-          </p>
-          <AuthPanel
-            mode="signup"
-            compact
-            onAuthed={() => {
-              onAuthed();
-            }}
-          />
-        </motion.div>
-      )}
+      <div className="space-y-2">
+        <Button onClick={onPaid} disabled={busy} className="sheen w-full h-12 rounded-full text-[15.5px] font-semibold" size="lg">
+          {busy ? "Preparing the envelope..." : <>Continue to checkout · $5</>}
+        </Button>
+        <p className="text-center text-[12px] text-ink/45">Preview is free. Panda only sends after checkout.</p>
+      </div>
     </div>
   );
 }

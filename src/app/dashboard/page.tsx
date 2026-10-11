@@ -436,7 +436,7 @@ function CardRow({ card, onChange }: { card: DashCard; onChange: () => void }) {
               Take back the card for {card.recipientName}?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-left text-[13.5px] leading-relaxed">
-              They never see it, and the {card.plan === "paid" ? "$4.99 returns in full" : "card is simply unmade"}.
+              They never see it, and the {card.plan === "paid" ? "$5 returns in full" : "card is simply unmade"}.
               This cannot be undone, but a new card is always a minute away.
             </AlertDialogDescription>
           </AlertDialogHeader>

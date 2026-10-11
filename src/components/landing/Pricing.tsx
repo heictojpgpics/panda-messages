@@ -6,15 +6,8 @@ import { Check, Sparkles } from "lucide-react";
 import { PandaMoodFace } from "@/components/brand/PandaMood";
 import { THEMES } from "@/data/themes";
 
-const FREE_FEATURES = [
-  "A personalized card, made in a minute",
-  "The Bamboo Grove theme, always",
-  "Share by text, WhatsApp, or email",
-  "Reactions and replies come back to you",
-];
-
 const PAID_FEATURES = [
-  "No pandamessages.com mark on their card",
+  "A private card link, without a Panda Messages mark",
   "All {n} themes for the page they open".replace("{n}", String(THEMES.length)),
   "Their song plays as they read it",
   "Up to 5 photos tucked inside",
@@ -33,47 +26,15 @@ export function Pricing() {
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6 py-20 sm:py-24">
         <div className="text-center max-w-2xl mx-auto">
           <h2 className="font-display font-semibold text-ink text-balance text-[clamp(1.6rem,3.5vw,2.3rem)]">
-            Two ways to send a little love
+            One price. The whole surprise.
           </h2>
           <p className="mt-3 text-ink-soft">
-            Make one yourself for free, or let Panda deliver it on the day. One price,
-            once, and no subscription in sight.
+            Build and preview any card for free. When it is ready to travel, Panda delivers
+            it for $5. Once, with no subscription.
           </p>
         </div>
 
-        <div className="mt-12 grid md:grid-cols-2 gap-6 max-w-4xl mx-auto items-stretch">
-          {/* Free */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-60px" }}
-            transition={{ duration: 0.55 }}
-            className="rounded-3xl bg-paper border border-ink/10 p-8 flex flex-col"
-          >
-            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-ink/45">
-              Make it yourself
-            </p>
-            <p className="mt-3 font-display font-semibold text-ink text-5xl">Free</p>
-            <p className="mt-2 text-[14px] text-ink-soft">You share the link yourself.</p>
-
-            <ul className="mt-7 space-y-3.5 flex-1">
-              {FREE_FEATURES.map((f) => (
-                <li key={f} className="flex gap-3 items-start text-[14px] text-ink/80">
-                  <Check className="h-4.5 w-4.5 text-jade shrink-0 mt-0.5" strokeWidth={2.5} />
-                  {f}
-                </li>
-              ))}
-            </ul>
-
-            <Link
-              href="/create"
-              className="mt-8 inline-flex justify-center rounded-full border-2 border-ink/15 bg-transparent text-ink font-semibold px-6 py-3.5 hover:border-ink/40 transition-all active:scale-[0.99]"
-            >
-              Make one free
-            </Link>
-          </motion.div>
-
-          {/* Paid */}
+        <div className="mt-12 max-w-xl mx-auto items-stretch">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -101,7 +62,7 @@ export function Pricing() {
                 </p>
               </div>
               <div className="mt-3 flex items-end gap-2">
-                <p className="font-display font-semibold text-ink text-5xl">$4.99</p>
+                <p className="font-display font-semibold text-ink text-5xl">$5</p>
                 <p className="text-[13px] text-ink/45 mb-1.5">once, per card</p>
               </div>
               <p className="mt-2 text-[14px] text-ink-soft">

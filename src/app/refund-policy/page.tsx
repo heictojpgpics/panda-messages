@@ -30,7 +30,7 @@ export default function RefundPolicyPage() {
               <h2 className="font-display font-semibold text-ink text-lg">Before it sends</h2>
               <p className="mt-3 text-[14px] text-ink-soft leading-[1.75]">
                 Every paid card can be cancelled from your dashboard until the moment Panda
-                delivers it. The card is withdrawn and the full $4.99 returns to your original
+                delivers it. The card is withdrawn and the full $5 returns to your original
                 payment method. In demo mode this happens instantly. With live payments it is
                 issued through our payment provider and usually lands within a few days,
                 depending on your bank.
