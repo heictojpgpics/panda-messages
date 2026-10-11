@@ -52,38 +52,69 @@ export function Wizard() {
   const editSlug = params.get("edit");
 
   const initial = useMemo<Draft>(() => {
-    // A refresh mid-flow should never cost anyone their words.
-    const saved: Partial<Draft> = readDraftMemory(DRAFT_MEMORY_KEY);
-    const occasion = params.get("occasion") ?? saved.occasion ?? "";
-    const custom = params.get("custom") ?? saved.customOccasion ?? "";
-    const replyTo = params.get("replyTo");
-    const to = params.get("to") ?? saved.recipientName ?? "";
+    // URL params are hydration-safe: the server sees the same URL. Anything
+    // from localStorage joins after mount, in the restore effect below, so
+    // the first client paint always agrees with the server render.
+    const occasion = params.get("occasion") ?? "";
+    const custom = params.get("custom") ?? "";
+    const to = params.get("to") ?? "";
     const valid = OCCASIONS.some((o) => o.id === occasion);
     const draft: Draft = {
       occasion: valid ? occasion : custom ? "custom" : "",
       customOccasion: custom,
       recipientName: to,
-      senderName: saved.senderName ?? "",
-      message: saved.message ?? "",
-      signoff: saved.signoff ?? "",
-      theme: saved.theme ?? "bamboo-grove",
-      songInput: saved.songInput ?? "",
-      photos: Array.isArray(saved.photos) ? saved.photos : [],
-      step: typeof saved.step === "number" ? saved.step : undefined,
+      senderName: "",
+      message: "",
+      signoff: "",
+      theme: "bamboo-grove",
+      songInput: "",
+      photos: [],
     };
     return draft;
   }, [params]);
 
   const [step, setStep] = useState(() => {
     if (editSlug) return 3;
-    if (typeof initial.step === "number" && initial.step >= 0 && initial.step <= 3) {
-      return initial.step;
-    }
-    if (initial.occasion && initial.recipientName && initial.message) return 2;
     if (initial.occasion && initial.recipientName) return 1;
     return 0;
   });
   const [draft, setDraft] = useState<Draft>(initial);
+
+  // A refresh mid-flow should never cost anyone their words. The saved
+  // draft is applied after mount (never during render) so the server and
+  // the first client frame match exactly, then the restored step takes over.
+  useEffect(() => {
+    const saved: Partial<Draft> = readDraftMemory(DRAFT_MEMORY_KEY);
+    if (!saved || Object.keys(saved).length === 0) return;
+    const occasion = params.get("occasion") ?? saved.occasion ?? "";
+    const custom = params.get("custom") ?? saved.customOccasion ?? "";
+    const to = params.get("to") ?? saved.recipientName ?? "";
+    const valid = OCCASIONS.some((o) => o.id === occasion);
+    setDraft((d) => ({
+      ...d,
+      occasion: valid ? occasion : custom ? "custom" : d.occasion,
+      customOccasion: custom || d.customOccasion,
+      recipientName: to || saved.recipientName || d.recipientName,
+      senderName: saved.senderName ?? d.senderName,
+      message: saved.message ?? d.message,
+      signoff: saved.signoff ?? d.signoff,
+      theme: saved.theme ?? d.theme,
+      songInput: saved.songInput ?? d.songInput,
+      photos: Array.isArray(saved.photos) ? saved.photos : d.photos,
+    }));
+    if (!editSlug) {
+      const savedStep = typeof saved.step === "number" && saved.step >= 0 && saved.step <= 3 ? saved.step : null;
+      if (savedStep !== null) {
+        setStep(savedStep);
+      } else if (occasion && (to || saved.recipientName) && (saved.message || "")) {
+        setStep(2);
+      } else if (occasion && (to || saved.recipientName)) {
+        setStep(1);
+      }
+    }
+    // Runs once, on mount, merging whatever the URL carried with whatever
+    // was saved.
+  }, []);
   const [seedIdx, setSeedIdx] = useState(0);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [busy, setBusy] = useState(false);

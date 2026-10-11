@@ -267,3 +267,7 @@ Under the hood: `users.credits`, `cards.batch_id`, `cards.pack_id`, a `purchases
 **Local development**: `scripts/local-d1-init.mjs` and `scripts/local-d1-seed.mjs` bring the local D1 proxy state (the database `next dev` actually talks to) up from the migrations and seed eight demo cards, no Cloudflare credentials needed.
 
 **Verification**: an 18-check end-to-end script (`scripts/e2e-paid-flow.mjs`) walks the whole paid pipeline: signup, single send on a pack, guest checkout with only an edit token, a 7-person bulk batch with dedupe and name guessing, a credits shortfall correctly refused, a batch purchase, a credit-funded send, dashboard state, cross-site POSTs blocked, payment retries idempotent, and a pack-card cancellation returning the credit. Production build, typecheck and lint all pass. The 46-email preview matrix renders clean, including the new pack receipt.
+
+## Follow-ups in the same pass
+
+The wizard used to read its saved draft from localStorage during the first render, so a returning sender got a hydration mismatch (the server said Step 1, the browser jumped to Step 4). The restore now happens after mount: first frames agree everywhere, then the saved step takes over. Also fixed the pack-cancellation path so a pack card returns one credit instead of refunding the entire pack purchase.
