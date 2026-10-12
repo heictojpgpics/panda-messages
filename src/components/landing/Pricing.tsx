@@ -17,6 +17,53 @@ const EVERY_CARD = [
   "The link is theirs forever, replayable any time",
 ];
 
+/** The inside of a pack card, shared by the plain and the loved frames. */
+function PackBody({ pack, loved }: { pack: (typeof PACKS)[number]; loved: boolean }) {
+  return (
+    <>
+      {loved && (
+        <div
+          className="absolute -top-16 -right-16 w-48 h-48 rounded-full blur-2xl pointer-events-none"
+          style={{ background: "radial-gradient(closest-side, rgba(201,162,39,0.18), transparent)" }}
+          aria-hidden
+        />
+      )}
+      <p className={loved ? "text-[11px] font-bold uppercase tracking-[0.22em] text-gold" : "text-[11px] font-bold uppercase tracking-[0.22em] text-ink/45"}>
+        {pack.label}
+      </p>
+      <div className="mt-3 flex items-end gap-2">
+        <p className="font-display font-semibold text-ink text-[44px] leading-none">
+          ${pack.price}
+        </p>
+        <p className="text-[13px] text-ink/45 mb-1">{pack.perCardLabel}</p>
+      </div>
+      <p className="mt-2.5 text-[14px] text-ink-soft leading-relaxed">{pack.blurb}</p>
+
+      <ul className="mt-6 space-y-3 flex-1">
+        {[`All ${pack.cards} cards fully unlocked`, ...EVERY_CARD.slice(0, 4)].map((f) => (
+          <li key={f} className="flex gap-3 items-start text-[13.5px] text-ink/85">
+            <span className={`shrink-0 mt-0.5 grid h-5 w-5 place-items-center rounded-full ${loved ? "bg-gold-soft" : "bg-jade-soft"}`}>
+              <Check className={`h-3 w-3 ${loved ? "text-[#8C6D10]" : "text-jade"}`} strokeWidth={3} />
+            </span>
+            {f}
+          </li>
+        ))}
+      </ul>
+
+      <Link
+        href="/create"
+        className={
+          loved
+            ? "sheen mt-8 inline-flex justify-center items-center gap-2 rounded-full bg-jade text-white font-semibold px-6 py-3.5 shadow-[0_14px_30px_-10px_rgba(21,122,85,0.65)] hover:bg-jade-deep transition-all active:scale-[0.99]"
+            : "mt-8 inline-flex justify-center rounded-full border-2 border-ink/15 bg-transparent text-ink font-semibold px-6 py-3.5 hover:border-ink/40 transition-all active:scale-[0.99]"
+        }
+      >
+        {pack.id === "single" ? "Send one card" : `Get ${pack.cards} cards`}
+      </Link>
+    </>
+  );
+}
+
 export function Pricing() {
   return (
     <section id="pricing" className="relative overflow-hidden">
@@ -49,20 +96,12 @@ export function Pricing() {
                 transition={{ duration: 0.55, delay: i * 0.08 }}
                 className={
                   loved
-                    ? "relative rounded-3xl p-[1.5px] overflow-hidden md:-my-3 shadow-[0_24px_60px_-30px_rgba(21,122,85,0.45)]"
+                    ? "relative h-full md:-my-3"
                     : "relative rounded-3xl border border-ink/10 bg-paper p-8 flex flex-col"
-                }
-                style={
-                  loved
-                    ? {
-                        background:
-                          "linear-gradient(150deg, rgba(201,162,39,0.7), rgba(21,122,85,0.6) 45%, rgba(201,162,39,0.55))",
-                      }
-                    : undefined
                 }
               >
                 {loved && (
-                  <span className="absolute -top-3 right-6 z-10 inline-flex items-center gap-1.5 rounded-full bg-gold text-ink text-[10.5px] font-bold uppercase tracking-wider px-3.5 py-1.5 shadow-lg">
+                  <span className="absolute -top-3 right-6 z-20 inline-flex items-center gap-1.5 rounded-full bg-gold text-ink text-[10.5px] font-bold uppercase tracking-wider px-3.5 py-1.5 shadow-lg">
                     <Sparkles className="h-3 w-3" />
                     Most loved
                   </span>
@@ -73,53 +112,23 @@ export function Pricing() {
                   </span>
                 )}
 
-                <div
-                  className={
-                    loved
-                      ? "h-full rounded-[calc(1.5rem-1.5px)] bg-paper p-8 flex flex-col relative overflow-hidden"
-                      : "flex flex-col h-full"
-                  }
-                >
-                  {loved && (
-                    <div
-                      className="absolute -top-16 -right-16 w-48 h-48 rounded-full blur-2xl pointer-events-none"
-                      style={{ background: "radial-gradient(closest-side, rgba(201,162,39,0.18), transparent)" }}
-                      aria-hidden
-                    />
-                  )}
-                  <p className={loved ? "text-[11px] font-bold uppercase tracking-[0.22em] text-gold" : "text-[11px] font-bold uppercase tracking-[0.22em] text-ink/45"}>
-                    {pack.label}
-                  </p>
-                  <div className="mt-3 flex items-end gap-2">
-                    <p className="font-display font-semibold text-ink text-[44px] leading-none">
-                      ${pack.price}
-                    </p>
-                    <p className="text-[13px] text-ink/45 mb-1">{pack.perCardLabel}</p>
-                  </div>
-                  <p className="mt-2.5 text-[14px] text-ink-soft leading-relaxed">{pack.blurb}</p>
-
-                  <ul className="mt-6 space-y-3 flex-1">
-                    {[`All ${pack.cards} cards fully unlocked`, ...EVERY_CARD.slice(0, 4)].map((f) => (
-                      <li key={f} className="flex gap-3 items-start text-[13.5px] text-ink/85">
-                        <span className={`shrink-0 mt-0.5 grid h-5 w-5 place-items-center rounded-full ${loved ? "bg-gold-soft" : "bg-jade-soft"}`}>
-                          <Check className={`h-3 w-3 ${loved ? "text-[#8C6D10]" : "text-jade"}`} strokeWidth={3} />
-                        </span>
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-
-                  <Link
-                    href="/create"
-                    className={
-                      loved
-                        ? "sheen mt-8 inline-flex justify-center items-center gap-2 rounded-full bg-jade text-white font-semibold px-6 py-3.5 shadow-[0_14px_30px_-10px_rgba(21,122,85,0.65)] hover:bg-jade-deep transition-all active:scale-[0.99]"
-                        : "mt-8 inline-flex justify-center rounded-full border-2 border-ink/15 bg-transparent text-ink font-semibold px-6 py-3.5 hover:border-ink/40 transition-all active:scale-[0.99]"
-                    }
+                {loved ? (
+                  /* The loved card: a gradient frame clipped to its rounded
+                     corners, with the badge riding above it, unclipped. */
+                  <div
+                    className="h-full rounded-3xl p-[1.5px] overflow-hidden shadow-[0_24px_60px_-30px_rgba(21,122,85,0.45)]"
+                    style={{
+                      background:
+                        "linear-gradient(150deg, rgba(201,162,39,0.7), rgba(21,122,85,0.6) 45%, rgba(201,162,39,0.55))",
+                    }}
                   >
-                    {pack.id === "single" ? "Send one card" : `Get ${pack.cards} cards`}
-                  </Link>
-                </div>
+                    <div className="h-full rounded-[calc(1.5rem-1.5px)] bg-paper p-8 flex flex-col relative overflow-hidden">
+                      <PackBody pack={pack} loved={loved} />
+                    </div>
+                  </div>
+                ) : (
+                  <PackBody pack={pack} loved={loved} />
+                )}
               </motion.div>
             );
           })}

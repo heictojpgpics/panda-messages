@@ -55,6 +55,7 @@
   --color-blush: var(--blush);
   --color-blush-soft: var(--blush-soft);
   --color-ivory: var(--ivory);
+  --color-cream: var(--cream);
   --color-paper: var(--paper);
   --color-mist: var(--mist);
 }
@@ -107,6 +108,7 @@
   --blush: #E0607E;
   --blush-soft: #FBE4EA;
   --ivory: #FBF9F4;
+  --cream: #FBF6EA;
   --paper: #FFFDF7;
   --mist: #EEF3E9;
 }
