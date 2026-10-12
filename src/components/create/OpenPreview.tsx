@@ -17,7 +17,10 @@ export function OpenPreview({
 }) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-[520px] p-0 overflow-hidden bg-transparent border-none">
+      <DialogContent
+        aria-describedby={undefined}
+        className="max-w-[520px] p-0 overflow-hidden bg-transparent border-none"
+      >
         <DialogTitle className="sr-only">A rehearsal of {data.recipientName} opening the card</DialogTitle>
         <CardScene data={{ ...data, occasionLabel }} mode="demo" />
       </DialogContent>

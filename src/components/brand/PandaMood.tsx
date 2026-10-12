@@ -94,7 +94,10 @@ export function PandaMoodFace({
       loading={"lazy"}
       decoding={"async"}
       className={cn("object-contain select-none pointer-events-none", className)}
-      style={{ width: size, height: "auto" }}
+      // A square box, always: the portraits have slightly different aspect
+      // ratios, and letting them drive the height makes any mood swap
+      // (live trackers, tab switches) nudge the layout around.
+      style={{ width: size, height: size }}
     />
   );
 }
