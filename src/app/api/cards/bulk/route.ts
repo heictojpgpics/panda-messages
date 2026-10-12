@@ -7,6 +7,7 @@ import { clientIp, rateLimit } from "@/lib/ratelimit";
 import { OCCASIONS } from "@/data/occasions";
 import { getTheme } from "@/data/themes";
 import { newId } from "@/lib/ids";
+import { sanitizeSongSnapshot } from "@/lib/song";
 
 const MAX_MESSAGE = 300;
 const MAX_SIGNOFF = 60;
@@ -45,8 +46,10 @@ export async function POST(req: NextRequest) {
     const message = String(base.message ?? "").trim();
     const signoff = String(base.signoff ?? "").trim();
     const theme = String(base.theme ?? "bamboo-grove").trim();
-    const songId = base.songId ? String(base.songId).trim().slice(0, 40) : null;
-    const songProvider = base.songId ? String(base.songProvider ?? "youtube") : null;
+    const song = sanitizeSongSnapshot(base.song);
+    const legacySongId = !song.songId && base.songId ? String(base.songId).trim().slice(0, 40) : null;
+    const songId = song.songId ?? legacySongId;
+    const songProvider = song.songProvider ?? (legacySongId ? "youtube" : null);
     const customOccasion = base.customOccasion ? String(base.customOccasion).trim().slice(0, 60) : null;
     const replyTo = base.replyTo ? String(base.replyTo).trim().slice(0, 20) : null;
 
@@ -105,6 +108,11 @@ export async function POST(req: NextRequest) {
           theme: getTheme(theme).id,
           songId,
           songProvider,
+          songTitle: song.songTitle,
+          songArtist: song.songArtist,
+          songArtwork: song.songArtwork,
+          songDuration: song.songDuration,
+          songPermalink: song.songPermalink,
           photos: [],
           replyToCardId: null,
         },

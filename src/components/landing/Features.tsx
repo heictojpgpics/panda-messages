@@ -10,7 +10,7 @@ const FEATURES = [
     icon: Music,
     title: "A song that plays as they read",
     body:
-      "Pick a song from YouTube and it plays the moment they open your card. One specific song, attached to one specific person, forever associated now.",
+      "Search millions of tracks from the open Audius catalog and attach the one that fits. It spins out of a record sleeve the moment they open your card.",
     panda: "wink",
   },
   {

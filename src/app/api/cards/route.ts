@@ -5,6 +5,7 @@ import { createCard, getCardBySlug, getCardById, cardOwnedBy } from "@/lib/cards
 import { clientIp, rateLimit } from "@/lib/ratelimit";
 import { OCCASIONS } from "@/data/occasions";
 import { getTheme } from "@/data/themes";
+import { sanitizeSongSnapshot } from "@/lib/song";
 
 const MAX_MESSAGE = 300;
 const MAX_SIGNOFF = 60;
@@ -36,8 +37,12 @@ export async function POST(req: NextRequest) {
     const message = String(body.message ?? "").trim();
     const signoff = String(body.signoff ?? "").trim();
     const theme = String(body.theme ?? "bamboo-grove").trim();
-    const songId = body.songId ? String(body.songId).trim().slice(0, 40) : null;
-    const songProvider = body.songId ? String(body.songProvider ?? "youtube") : null;
+    // Songs arrive two ways: an Audius pick (structured snapshot, sanitized
+    // server-side) or a legacy YouTube id from a card made before Audius.
+    const song = sanitizeSongSnapshot(body.song);
+    const legacySongId = !song.songId && body.songId ? String(body.songId).trim().slice(0, 40) : null;
+    const songId = song.songId ?? legacySongId;
+    const songProvider = song.songProvider ?? (legacySongId ? "youtube" : null);
     const photos = Array.isArray(body.photos) ? body.photos.filter((p: unknown) => typeof p === "string") : null;
     const replyTo = body.replyTo ? String(body.replyTo).trim().slice(0, 20) : null;
     const customOccasion = body.customOccasion ? String(body.customOccasion).trim().slice(0, 60) : null;
@@ -94,6 +99,11 @@ export async function POST(req: NextRequest) {
         theme: getTheme(theme).id,
         songId,
         songProvider,
+        songTitle: song.songTitle,
+        songArtist: song.songArtist,
+        songArtwork: song.songArtwork,
+        songDuration: song.songDuration,
+        songPermalink: song.songPermalink,
         photos,
         replyToCardId,
       },
@@ -138,7 +148,20 @@ export async function GET(req: NextRequest) {
     signoff: card.signoff,
     theme: card.theme,
     songId: card.songId,
-    songInput: card.songId ? `https://youtu.be/${card.songId}` : "",
+    songProvider: card.songProvider,
+    song:
+      card.songProvider === "audius" && card.songId
+        ? {
+            id: card.songId,
+            title: card.songTitle ?? "",
+            artist: card.songArtist ?? "",
+            artwork: card.songArtwork,
+            duration: card.songDuration ?? 0,
+            permalink: card.songPermalink,
+          }
+        : null,
+    // Legacy YouTube cards keep round-tripping through the input field.
+    songInput: card.songProvider !== "audius" && card.songId ? `https://youtu.be/${card.songId}` : "",
     photos: card.photos ? JSON.parse(card.photos) : [],
   });
 }

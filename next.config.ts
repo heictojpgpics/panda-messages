@@ -25,7 +25,10 @@ const securityHeaders = [
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
-      // Songs are YouTube embeds on the recipient's card page.
+      // Songs stream through our own /api/audius/stream proxy (one tight
+      // CSP, immune to content-node rotation); legacy cards still embed
+      // YouTube frames.
+      "media-src 'self'",
       "frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com",
       "font-src 'self' data:",
       "connect-src 'self' https://api.resend.com https://api.stripe.com",

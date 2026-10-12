@@ -18,7 +18,8 @@ watches the whole thing happen live.
 
 **For the sender**
 - A 4-step card wizard: occasion → names → words/wrapping → delivery, with a live preview,
-  message seeds in Panda's voice, YouTube song attach, up to 5 photos (compressed client-side),
+  message seeds in Panda's voice, an Audius song picker (search, trending by genre, 30-second
+  previews, surprise-me) over the open Audius catalog, up to 5 photos (compressed client-side),
   and 14 themes
 - Free to make and preview, always
 - Paid sends ($5 single, $20 five-pack, $50 fifteen-pack): no watermark, all 14 themes, song, photos, scheduled email delivery
@@ -29,7 +30,8 @@ watches the whole thing happen live.
 
 **For the recipient**
 - The card page: a sealed envelope with their name, a wax seal that cracks, the card rising out,
-  theme-colored ambient particles, their song, the photos, reactions with a burst animation,
+  theme-colored ambient particles, their song spinning out of a record sleeve (native audio,
+  streamed through our own proxy), the photos, reactions with a burst animation,
   and a reply box (or a card back, with the reply flow pre-filled)
 
 **Under the hood**
@@ -40,6 +42,9 @@ watches the whole thing happen live.
   are set
 - Email: a demo outbox by default (viewable in the dashboard, exactly as it would arrive),
   Resend when a key is set
+- Songs: the Audius catalog through `@audius/sdk` behind our own API routes (`/api/audius/search`,
+  `/trending`, `/lucky`), with playback streamed through `/api/audius/stream/[id]` so audio stays
+  first-party and the CSP stays tight. Works with no key; set `AUDIUS_API_KEY` for higher limits
 - Delivery engine: idempotent, runs from page loads opportunistically and from
   `/api/cron/deliveries` for real schedulers
 

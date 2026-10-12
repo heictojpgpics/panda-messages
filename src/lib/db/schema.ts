@@ -60,6 +60,12 @@ export const cards = sqliteTable("cards", {
   theme: text("theme").notNull(),
   songId: text("song_id"),
   songProvider: text("song_provider"),
+  /** Audius snapshot: what the letter shows without a live lookup. */
+  songTitle: text("song_title"),
+  songArtist: text("song_artist"),
+  songArtwork: text("song_artwork"),
+  songDuration: integer("song_duration"),
+  songPermalink: text("song_permalink"),
   /** JSON array of compressed data URLs. */
   photos: text("photos"),
   plan: text("plan").notNull().default("free"),
