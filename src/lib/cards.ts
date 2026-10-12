@@ -18,6 +18,12 @@ export interface CardDraft {
   theme: string;
   songId?: string | null;
   songProvider?: string | null;
+  /** Audius snapshot fields, written alongside songId. */
+  songTitle?: string | null;
+  songArtist?: string | null;
+  songArtwork?: string | null;
+  songDuration?: number | null;
+  songPermalink?: string | null;
   photos?: CardPhotoValue[] | null;
   replyToCardId?: string | null;
 }
@@ -101,6 +107,11 @@ export async function createCard(draft: CardDraft, userId: string | null, batchI
     theme: theme.id,
     songId: draft.songId || null,
     songProvider: draft.songProvider || null,
+    songTitle: draft.songTitle || null,
+    songArtist: draft.songArtist || null,
+    songArtwork: draft.songArtwork || null,
+    songDuration: draft.songDuration ?? null,
+    songPermalink: draft.songPermalink || null,
     photos: draft.photos?.length ? JSON.stringify(draft.photos) : null,
     plan: "free",
     status: "draft",
@@ -157,6 +168,11 @@ export async function updateCard(id: string, patch: Partial<CardDraft> & { recip
   if (patch.theme !== undefined) values.theme = getTheme(patch.theme).id;
   if (patch.songId !== undefined) values.songId = patch.songId || null;
   if (patch.songProvider !== undefined) values.songProvider = patch.songProvider || null;
+  if (patch.songTitle !== undefined) values.songTitle = patch.songTitle || null;
+  if (patch.songArtist !== undefined) values.songArtist = patch.songArtist || null;
+  if (patch.songArtwork !== undefined) values.songArtwork = patch.songArtwork || null;
+  if (patch.songDuration !== undefined) values.songDuration = patch.songDuration ?? null;
+  if (patch.songPermalink !== undefined) values.songPermalink = patch.songPermalink || null;
   if (patch.photos !== undefined) values.photos = patch.photos?.length ? JSON.stringify(patch.photos) : null;
   await db.update(cards).set(values).where(eq(cards.id, id));
 }

@@ -115,6 +115,18 @@ export default async function CardPage({ params }: Props) {
           signoff: card.signoff,
           theme: card.theme,
           songId: card.plan === "paid" ? card.songId : null,
+          song:
+            card.plan === "paid" && card.songProvider !== "youtube" && card.songId
+              ? {
+                  id: card.songId,
+                  provider: card.songProvider ?? "audius",
+                  title: card.songTitle ?? null,
+                  artist: card.songArtist ?? null,
+                  artwork: card.songArtwork ?? null,
+                  duration: card.songDuration ?? null,
+                  permalink: card.songPermalink ?? null,
+                }
+              : null,
           photos: showPhotos,
           photoSlug: slug,
           watermark: card.watermark,

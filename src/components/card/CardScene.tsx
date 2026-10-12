@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { cardPhotoUrl, type CardPhotoValue } from "@/lib/card-photos";
 import { ThemeScene, worldKindFor, shade } from "./ThemeScene";
 import { OpeningBurst, LetterFloatAccents, motifsFor } from "./AmbientParticles";
-import { Play, RotateCcw, Music, Send, Heart, Check, Link2 } from "lucide-react";
+import { Play, RotateCcw, Music, Send, Heart, Check, Link2, Pause, Loader2, ArrowUpRight } from "lucide-react";
 
 export interface CardSceneData {
   occasionLabel: string;
@@ -20,7 +20,18 @@ export interface CardSceneData {
   message: string;
   signoff: string;
   theme: string;
+  /** Legacy YouTube songs, kept so old cards keep playing. */
   songId?: string | null;
+  /** The Audius pick: a frozen snapshot plus a fresh-resolving stream. */
+  song?: {
+    id: string;
+    provider: string;
+    title: string | null;
+    artist: string | null;
+    artwork: string | null;
+    duration: number | null;
+    permalink: string | null;
+  } | null;
   photos?: CardPhotoValue[];
   photoSlug?: string;
   watermark: boolean;
@@ -570,79 +581,372 @@ function PolaroidStack({
 }
 
 /* ------------------------------------------------------------------ */
-/* The song: a record leaning out of its sleeve                        */
+/* The song: a record leaning out of its sleeve, then the real player  */
 /* ------------------------------------------------------------------ */
+
+interface SceneSong {
+  id: string;
+  provider: string;
+  title: string | null;
+  artist: string | null;
+  artwork: string | null;
+  duration: number | null;
+  permalink: string | null;
+}
+
+function songTime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+/** The sleeve face: real artwork when we have it, the seal when we don't. */
+function SleeveArt({ song, theme, className }: { song: SceneSong; theme: Theme; className?: string }) {
+  const [broken, setBroken] = useState(false);
+  if (!song.artwork || broken) {
+    return (
+      <span
+        className={cn("grid place-items-center", className)}
+        style={{
+          background: `linear-gradient(150deg, ${shade(theme.colors.seal, 0.14)}, ${theme.colors.seal})`,
+        }}
+        aria-hidden
+      >
+        <Music className="h-5 w-5 text-white/95" />
+      </span>
+    );
+  }
+  return (
+     
+    <img
+      src={song.artwork}
+      alt=""
+      className={cn("object-cover", className)}
+      onError={() => setBroken(true)}
+      loading="lazy"
+    />
+  );
+}
 
 function SongSleeve({
   songId,
+  song,
   theme,
   delay,
 }: {
-  songId: string;
+  songId?: string | null;
+  song?: SceneSong | null;
   theme: Theme;
   delay: number;
 }) {
+  // Old cards arrived with a YouTube link; they keep their embed. A song
+  // object that is not an Audius pick (defensively) rides the same path.
+  const legacyYouTube =
+    songId && (!song || song.provider !== "audius") ? songId : null;
   const [open, setOpen] = useState(false);
 
-  if (open) {
+  if (legacyYouTube) {
+    if (open) {
+      return (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          className="relative overflow-hidden rounded-2xl border border-ink/10 shadow-[0_18px_40px_-22px_rgba(22,36,28,0.55)]"
+        >
+          <iframe
+            src={`https://www.youtube-nocookie.com/embed/${legacyYouTube}?autoplay=1&rel=0`}
+            title="Their song"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+            className="w-full aspect-video"
+          />
+        </motion.div>
+      );
+    }
     return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-        className="relative overflow-hidden rounded-2xl border border-ink/10 shadow-[0_18px_40px_-22px_rgba(22,36,28,0.55)]"
+      <motion.button
+        type="button"
+        onClick={() => setOpen(true)}
+        initial={{ opacity: 0, y: 22 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+        className="group relative mx-auto flex w-full max-w-[330px] cursor-pointer items-center gap-4 rounded-2xl border border-ink/10 bg-white/85 px-4 py-3.5 text-left shadow-[0_16px_36px_-20px_rgba(22,36,28,0.5)] backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:shadow-[0_22px_44px_-20px_rgba(22,36,28,0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-jade/45"
+        aria-label="Play their song"
       >
-        <iframe
-          src={`https://www.youtube-nocookie.com/embed/${songId}?autoplay=1&rel=0`}
-          title="Their song"
-          allow="autoplay; encrypted-media; picture-in-picture"
-          allowFullScreen
-          className="w-full aspect-video"
-        />
-      </motion.div>
+        <span className="relative block h-[52px] w-[86px] shrink-0" aria-hidden>
+          <span
+            className="absolute left-0 top-0 grid h-[52px] w-[52px] place-items-center rounded-[6px] shadow-[0_3px_8px_-3px_rgba(22,36,28,0.4)]"
+            style={{ background: `linear-gradient(150deg, ${shade(theme.colors.seal, 0.12)}, ${theme.colors.seal})` }}
+          >
+            <Music className="h-5 w-5 text-white/95" />
+          </span>
+          <span
+            className="scene-vinyl absolute right-0 top-1/2 block h-[44px] w-[44px] -translate-y-1/2 rounded-full"
+            style={{
+              background: "radial-gradient(circle at 50% 50%, #2a2a2a 0%, #111 58%, #000 100%)",
+              boxShadow: "inset 0 0 0 1.5px rgba(255,255,255,0.14), 0 3px 8px -2px rgba(22,36,28,0.45)",
+            }}
+          >
+            <span
+              className="absolute left-1/2 top-1/2 block h-[16px] w-[16px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+              style={{ background: theme.colors.seal, boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.3)" }}
+            />
+            <span className="absolute left-1/2 top-1/2 block h-[3px] w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/80" />
+          </span>
+        </span>
+        <span className="min-w-0">
+          <span className="block text-[14px] font-semibold text-ink/90">They picked a song for this</span>
+          <span className="mt-0.5 block text-[12px] text-ink/50">Press play. It goes with the words.</span>
+        </span>
+        <span className="ml-auto grid h-9 w-9 shrink-0 place-items-center rounded-full bg-blush text-white shadow-[0_6px_16px_-6px_rgba(224,96,126,0.7)] transition-transform group-hover:scale-105">
+          <Play className="h-3.5 w-3.5 fill-white" />
+        </span>
+      </motion.button>
+    );
+  }
+
+  if (!song) return null;
+  return <VinylPlayer song={song} theme={theme} delay={delay} />;
+}
+
+/**
+ * The Audius player. One tap on the sleeve and the record comes out
+ * spinning: native audio through our own stream route, honest progress
+ * from the frozen snapshot, and a graceful exit to audius.co if the
+ * track ever leaves the catalog.
+ */
+function VinylPlayer({ song, theme, delay }: { song: SceneSong; theme: Theme; delay: number }) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [buffering, setBuffering] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+
+  const total = song.duration && song.duration > 0 ? song.duration : null;
+  const progress = total ? Math.min(1, elapsed / total) : 0;
+
+  // The audio element only exists once the sleeve is opened; the tap that
+  // opens it is the user gesture that lets it start.
+  const startPlayback = () => {
+    const el = audioRef.current;
+    if (!el) return;
+    if (playing) {
+      el.pause();
+      return;
+    }
+    setBuffering(true);
+    el.play().catch(() => {
+      setBuffering(false);
+      setFailed(true);
+    });
+  };
+
+  // When the card scene unmounts mid-song, the audio goes with it.
+  useEffect(() => {
+    const el = audioRef.current;
+    return () => {
+      try {
+        el?.pause();
+      } catch {
+        /* already gone */
+      }
+    };
+  }, []);
+
+  if (!open) {
+    return (
+      <motion.button
+        type="button"
+        onClick={() => setOpen(true)}
+        initial={{ opacity: 0, y: 22 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+        className="group relative mx-auto flex w-full max-w-[330px] cursor-pointer items-center gap-4 rounded-2xl border border-ink/10 bg-white/85 px-4 py-3.5 text-left shadow-[0_16px_36px_-20px_rgba(22,36,28,0.5)] backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:shadow-[0_22px_44px_-20px_rgba(22,36,28,0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-jade/45"
+        aria-label={`Play their song: ${song.title ?? "a picked song"}`}
+      >
+        {/* the sleeve, with the record leaning out of it */}
+        <span className="relative block h-[54px] w-[90px] shrink-0" aria-hidden>
+          <SleeveArt
+            song={song}
+            theme={theme}
+            className="absolute left-0 top-0 h-[54px] w-[54px] rounded-[6px] shadow-[0_3px_8px_-3px_rgba(22,36,28,0.4)]"
+          />
+          <span
+            className="scene-vinyl absolute right-0 top-1/2 block h-[46px] w-[46px] -translate-y-1/2 rounded-full"
+            style={{
+              background: "radial-gradient(circle at 50% 50%, #2a2a2a 0%, #111 58%, #000 100%)",
+              boxShadow: "inset 0 0 0 1.5px rgba(255,255,255,0.14), 0 3px 8px -2px rgba(22,36,28,0.45)",
+            }}
+          >
+            <span
+              className="absolute left-1/2 top-1/2 block h-[17px] w-[17px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full"
+              style={{ background: theme.colors.seal, boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.3)" }}
+            >
+              {song.artwork ? (
+                 
+                <img src={song.artwork} alt="" className="h-full w-full object-cover" loading="lazy" />
+              ) : null}
+            </span>
+            <span className="absolute left-1/2 top-1/2 block h-[3px] w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/80" />
+          </span>
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14px] font-semibold text-ink/90">They picked a song for this</span>
+          <span className="mt-0.5 block truncate text-[12px] text-ink/50">
+            {song.title ?? "A song"}
+            {song.artist ? ` — ${song.artist}` : ""}
+          </span>
+        </span>
+        <span className="ml-auto grid h-9 w-9 shrink-0 place-items-center rounded-full bg-blush text-white shadow-[0_6px_16px_-6px_rgba(224,96,126,0.7)] transition-transform group-hover:scale-105">
+          <Play className="h-3.5 w-3.5 fill-white" />
+        </span>
+      </motion.button>
     );
   }
 
   return (
-    <motion.button
-      type="button"
-      onClick={() => setOpen(true)}
-      initial={{ opacity: 0, y: 22 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-      className="group relative mx-auto flex w-full max-w-[330px] cursor-pointer items-center gap-4 rounded-2xl border border-ink/10 bg-white/85 px-4 py-3.5 text-left shadow-[0_16px_36px_-20px_rgba(22,36,28,0.5)] backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:shadow-[0_22px_44px_-20px_rgba(22,36,28,0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-jade/45"
-      aria-label="Play their song"
+    <motion.div
+      initial={{ opacity: 0, y: 14, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      className="relative mx-auto w-full max-w-[330px] rounded-2xl border border-ink/10 bg-white/90 p-4 shadow-[0_18px_40px_-22px_rgba(22,36,28,0.55)] backdrop-blur-sm"
     >
-      {/* the sleeve, with the record leaning out of it */}
-      <span className="relative block h-[52px] w-[86px] shrink-0" aria-hidden>
-        <span
-          className="absolute left-0 top-0 grid h-[52px] w-[52px] place-items-center rounded-[6px] shadow-[0_3px_8px_-3px_rgba(22,36,28,0.4)]"
-          style={{ background: `linear-gradient(150deg, ${shade(theme.colors.seal, 0.12)}, ${theme.colors.seal})` }}
-        >
-          <Music className="h-5 w-5 text-white/95" />
-        </span>
-        <span
-          className="scene-vinyl absolute right-0 top-1/2 block h-[44px] w-[44px] -translate-y-1/2 rounded-full"
-          style={{
-            background: "radial-gradient(circle at 50% 50%, #2a2a2a 0%, #111 58%, #000 100%)",
-            boxShadow: "inset 0 0 0 1.5px rgba(255,255,255,0.14), 0 3px 8px -2px rgba(22,36,28,0.45)",
-          }}
-        >
+      {failed ? (
+        <div className="flex flex-col items-center gap-2 py-2 text-center">
           <span
-            className="absolute left-1/2 top-1/2 block h-[16px] w-[16px] -translate-x-1/2 -translate-y-1/2 rounded-full"
-            style={{ background: theme.colors.seal, boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.3)" }}
+            className="grid h-11 w-11 place-items-center rounded-full"
+            style={{ background: `linear-gradient(150deg, ${shade(theme.colors.seal, 0.14)}, ${theme.colors.seal})` }}
+            aria-hidden
+          >
+            <Music className="h-5 w-5 text-white/95" />
+          </span>
+          <p className="text-[13.5px] font-medium text-ink/80">
+            {song.title ?? "Their song"} can't play here right now.
+          </p>
+          {song.permalink ? (
+            <a
+              href={song.permalink}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex items-center gap-1 text-[12.5px] font-medium text-jade link-pretty"
+            >
+              Listen on Audius <ArrowUpRight className="h-3.5 w-3.5" />
+            </a>
+          ) : null}
+        </div>
+      ) : (
+        <>
+          <audio
+            ref={audioRef}
+            src={`/api/audius/stream/${encodeURIComponent(song.id)}`}
+            preload="auto"
+            autoPlay
+            onPlay={() => {
+              setPlaying(true);
+              setBuffering(false);
+            }}
+            onPause={() => setPlaying(false)}
+            onWaiting={() => setBuffering(true)}
+            onPlaying={() => setBuffering(false)}
+            onTimeUpdate={(e) => setElapsed(e.currentTarget.currentTime)}
+            onEnded={() => {
+              setPlaying(false);
+              setElapsed(0);
+            }}
+            onError={() => {
+              setBuffering(false);
+              setPlaying(false);
+              setFailed(true);
+            }}
           />
-          <span className="absolute left-1/2 top-1/2 block h-[3px] w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/80" />
-        </span>
-      </span>
-      <span className="min-w-0">
-        <span className="block text-[14px] font-semibold text-ink/90">They picked a song for this</span>
-        <span className="mt-0.5 block text-[12px] text-ink/50">Press play. It goes with the words.</span>
-      </span>
-      <span className="ml-auto grid h-9 w-9 shrink-0 place-items-center rounded-full bg-blush text-white shadow-[0_6px_16px_-6px_rgba(224,96,126,0.7)] transition-transform group-hover:scale-105">
-        <Play className="h-3.5 w-3.5 fill-white" />
-      </span>
-    </motion.button>
+          <div className="flex items-center gap-3.5">
+            {/* the record, out of its sleeve and turning */}
+            <span className="relative block h-[74px] w-[104px] shrink-0" aria-hidden>
+              <SleeveArt
+                song={song}
+                theme={theme}
+                className="absolute left-0 top-0 h-[74px] w-[74px] rounded-[8px] shadow-[0_5px_12px_-4px_rgba(22,36,28,0.45)]"
+              />
+              <span
+                className="scene-vinyl absolute right-0 top-1/2 block h-[64px] w-[64px] -translate-y-1/2 rounded-full"
+                style={{
+                  background: "radial-gradient(circle at 50% 50%, #2a2a2a 0%, #111 58%, #000 100%)",
+                  boxShadow: "inset 0 0 0 2px rgba(255,255,255,0.14), 0 6px 14px -6px rgba(22,36,28,0.55)",
+                  animationPlayState: playing ? "running" : "paused",
+                }}
+              >
+                <span
+                  className="absolute left-1/2 top-1/2 block h-[24px] w-[24px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full"
+                  style={{ background: theme.colors.seal, boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.35)" }}
+                >
+                  {song.artwork ? (
+                     
+                    <img src={song.artwork} alt="" className="h-full w-full object-cover" />
+                  ) : null}
+                </span>
+                <span className="absolute left-1/2 top-1/2 block h-[4px] w-[4px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/85" />
+              </span>
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[14px] font-semibold text-ink/90">{song.title ?? "Their song"}</span>
+              <span className="mt-0.5 block truncate text-[12px] text-ink/55">
+                {song.artist ?? "Someone who matched the words"}
+              </span>
+              <span className="mt-2 flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={startPlayback}
+                  className="grid h-9 w-9 shrink-0 cursor-pointer place-items-center rounded-full bg-blush text-white shadow-[0_6px_16px_-6px_rgba(224,96,126,0.7)] transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-jade/45"
+                  aria-label={playing ? "Pause the song" : "Play the song"}
+                >
+                  {buffering && !playing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : playing ? (
+                    <Pause className="h-4 w-4 fill-white" />
+                  ) : (
+                    <Play className="h-4 w-4 fill-white" />
+                  )}
+                </button>
+                <span className="min-w-0 flex-1">
+                  <span className="block h-[3px] w-full overflow-hidden rounded-full bg-ink/10" aria-hidden>
+                    <span
+                      className="block h-full rounded-full transition-[width] duration-500 ease-linear"
+                      style={{
+                        width: `${Math.round(progress * 100)}%`,
+                        background: `linear-gradient(90deg, ${shade(theme.colors.seal, 0.2)}, ${theme.colors.seal})`,
+                      }}
+                    />
+                  </span>
+                  <span className="mt-1 block text-[10.5px] tabular-nums text-ink/45">
+                    {songTime(elapsed)}
+                    {total ? ` · ${songTime(total)}` : ""}
+                  </span>
+                </span>
+              </span>
+            </span>
+          </div>
+          <p className="mt-2.5 border-t border-ink/8 pt-2 text-center text-[10px] text-ink/35">
+            from the open Audius catalog
+            {song.permalink ? (
+              <>
+                {" · "}
+                <a
+                  href={song.permalink}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="link-pretty text-ink/45"
+                >
+                  audius.co
+                </a>
+              </>
+            ) : null}
+          </p>
+        </>
+      )}
+    </motion.div>
   );
 }
 
@@ -743,9 +1047,9 @@ function TheLetter({
       )}
 
       {/* The song, leaning out of its sleeve */}
-      {showExtras && data.songId && (
+      {showExtras && (data.song || data.songId) && (
         <div className="relative mt-3 w-full">
-          <SongSleeve songId={data.songId} theme={theme} delay={0.78} />
+          <SongSleeve songId={data.songId} song={data.song} theme={theme} delay={0.78} />
         </div>
       )}
 

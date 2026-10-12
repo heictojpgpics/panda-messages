@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sameOrigin } from "@/lib/origin";
 import { getCurrentUser } from "@/lib/auth";
 import { getCardBySlug, updateCard, attachCardToUser, cardOwnedBy, logEvent } from "@/lib/cards";
+import { sanitizeSongSnapshot } from "@/lib/song";
 
 /**
  * Update a card while it is still editable. A card belongs to its maker:
@@ -61,9 +62,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ sl
     if (body.signoff !== undefined) patch.signoff = String(body.signoff).trim().slice(0, 60);
     if (body.customOccasion !== undefined) patch.customOccasion = String(body.customOccasion).trim().slice(0, 60) || null;
     if (body.theme !== undefined && typeof body.theme === "string") patch.theme = body.theme;
-    if (body.songId !== undefined) {
+    if (body.song !== undefined) {
+      // A structured Audius pick replaces whatever song was attached.
+      const song = sanitizeSongSnapshot(body.song);
+      patch.songId = song.songId;
+      patch.songProvider = song.songProvider;
+      patch.songTitle = song.songTitle;
+      patch.songArtist = song.songArtist;
+      patch.songArtwork = song.songArtwork;
+      patch.songDuration = song.songDuration;
+      patch.songPermalink = song.songPermalink;
+    } else if (body.songId !== undefined) {
+      // Legacy shape (and explicit clears): a bare id or null.
       patch.songId = body.songId ? String(body.songId).slice(0, 40) : null;
-      patch.songProvider = body.songId ? "youtube" : null;
+      patch.songProvider = body.songId ? String(body.songProvider ?? "youtube").slice(0, 20) : null;
     }
     if (body.recipientEmail !== undefined) {
       const email = String(body.recipientEmail ?? "").trim();

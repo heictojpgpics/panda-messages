@@ -1,6 +1,9 @@
 // seed-keepsake.mjs — the showcase card for the full-screen opening demo:
-// paid, delivered, with a song and three photos, styled after the
+// paid, delivered, with an Audius song and three photos, styled after the
 // kittymessages reference sample (Sam -> Sarah, birthday).
+//
+// The song is a frozen Audius snapshot: the letter renders it without a
+// live lookup, while playback resolves fresh through /api/audius/stream.
 import { getPlatformProxy } from "wrangler";
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
@@ -19,18 +22,29 @@ const CARD = {
   message:
     "Another year of you, which is the best news all year. Thank you for every laugh, every late night, every cake we should not have eaten. Whatever this next one brings, I want a front-row seat.",
   signoff: "with love, Sam",
-  song: "KQetemT1sWU",
+  song: {
+    id: "W6ENB", // Jijikita — Love Story
+    title: "Love Story",
+    artist: "Jijikita",
+    artwork: "https://val009.open-audio-validator.com/content/QmTesbUjfnJUnZRcauTathBmqTVDDjvJQscM3SHzCUYv1y/480x480.jpg",
+    duration: 202,
+    permalink: "https://audius.co/kitaurasyuji1/love-story",
+  },
   photos: ["/demo/picnic.png", "/demo/candles.png", "/demo/selfie.png"],
 };
 
 const INSERT = `INSERT INTO cards (
   id, slug, user_id, edit_token, sender_name, recipient_name, recipient_email,
-  occasion, custom_occasion, message, signoff, theme, song_id, song_provider, photos,
+  occasion, custom_occasion, message, signoff, theme,
+  song_id, song_provider, song_title, song_artist, song_artwork, song_duration, song_permalink,
+  photos,
   plan, status, watermark, reply_to_card_id, view_count, opened_at, paid_at, payment_ref,
   checkout_provider, deliver_at, delivered_at, created_at, updated_at
 ) VALUES (
   ?, ?, 'seed-user', ?, ?, ?, 'seed@example.com',
-  ?, NULL, ?, ?, ?, ?, 'youtube', ?,
+  ?, NULL, ?, ?, ?,
+  ?, 'audius', ?, ?, ?, ?, ?,
+  ?,
   'paid', 'delivered', 0, NULL, 0, NULL, ?, 'mock_seed',
   'mock', ?, ?, ?, ?
 )`;
@@ -61,16 +75,21 @@ async function main() {
       CARD.message,
       CARD.signoff,
       CARD.theme,
-      CARD.song,
+      CARD.song.id,
+      CARD.song.title,
+      CARD.song.artist,
+      CARD.song.artwork,
+      CARD.song.duration,
+      CARD.song.permalink,
       JSON.stringify(CARD.photos),
       now, // paid_at
       now, // deliver_at
       now, // delivered_at
       now, // created_at
-      now, // updated_at
+      now // updated_at
     )
     .run();
-  console.log("seeded keepsake-demo ->", CARD.slug);
+  console.log("seeded keepsake-demo ->", CARD.slug, "with song", CARD.song.title);
   await proxy.dispose();
 }
 

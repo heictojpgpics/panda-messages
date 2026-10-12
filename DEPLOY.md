@@ -256,6 +256,7 @@ pipeline, no charge). The test card in Stripe test mode is
 | `RESEND_API_KEY` | optional | real email |
 | `EMAIL_FROM` | optional | sender address |
 | `CRON_SECRET` | optional | protects the cron endpoint |
+| `AUDIUS_API_KEY` | optional | higher rate limits on the Audius catalog (the app works without it; free plan is 10 req/s, 500k/month) |
 
 ## 8. Operations notes
 

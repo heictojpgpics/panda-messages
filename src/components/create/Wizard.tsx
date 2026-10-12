@@ -10,7 +10,7 @@ import { defaultSignoff } from "@/data/signoffs";
 import { MiniCard } from "@/components/brand/MiniCard";
 import { EnvelopeChip } from "@/components/brand/Envelope";
 import { cn } from "@/lib/utils";
-import { compressPhoto, extractYouTubeId, PHOTO_LIMITS } from "@/lib/photo";
+import { compressPhoto, PHOTO_LIMITS } from "@/lib/photo";
 import { guessNameFromEmail } from "@/lib/name-from-email";
 import { PACKS } from "@/lib/config";
 import {
@@ -28,6 +28,8 @@ import { getTheme } from "@/data/themes";
 import { toast } from "sonner";
 import { readDraftMemory, readEditToken, useCardMemoryStore } from "@/stores/card-memory";
 import type { CardPhotoValue } from "@/lib/card-photos";
+import { type CardSong } from "@/lib/song";
+import { SongPicker } from "./SongPicker";
 
 const DRAFT_MEMORY_KEY = "active";
 
@@ -39,6 +41,10 @@ interface Draft {
   message: string;
   signoff: string;
   theme: string;
+  /** The Audius pick, structured and snapshotted at save time. */
+  song: CardSong | null;
+  /** A YouTube song from a card made before Audius; kept, never re-picked. */
+  legacySongId: string | null;
   songInput: string;
   photos: CardPhotoValue[];
   step?: number;
@@ -67,6 +73,8 @@ export function Wizard() {
       message: "",
       signoff: "",
       theme: "bamboo-grove",
+      song: null,
+      legacySongId: null,
       songInput: "",
       photos: [],
     };
@@ -99,6 +107,8 @@ export function Wizard() {
       message: saved.message ?? d.message,
       signoff: saved.signoff ?? d.signoff,
       theme: saved.theme ?? d.theme,
+      song: saved.song ?? d.song,
+      legacySongId: saved.legacySongId ?? d.legacySongId,
       songInput: saved.songInput ?? d.songInput,
       photos: Array.isArray(saved.photos) ? saved.photos : d.photos,
     }));
@@ -117,6 +127,7 @@ export function Wizard() {
   }, []);
   const [seedIdx, setSeedIdx] = useState(0);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   // A card already saved server-side this session: reused on retry instead
   // of creating a twin every time checkout hiccups.
@@ -188,9 +199,14 @@ export function Wizard() {
           message: c.message ?? "",
           signoff: c.signoff ?? "",
           theme: c.theme ?? "bamboo-grove",
-          songInput: c.songId ? `https://youtu.be/${c.songId}` : "",
+          song: c.song ?? null,
+          legacySongId: !c.song && c.songId && c.songProvider !== "audius" ? c.songId : null,
+          songInput: "",
           photos: Array.isArray(c.photos) ? c.photos : [],
         }));
+        setOriginalLegacySongId(
+          !c.song && c.songId && c.songProvider !== "audius" ? c.songId : null
+        );
       })
       .catch(() => {
         if (cancelled) return;
@@ -206,7 +222,10 @@ export function Wizard() {
   const seeds = MESSAGE_SEEDS[occasion] ?? MESSAGE_SEEDS["just-because"];
   const effectiveOccasionLabel =
     draft.occasion === "custom" && draft.customOccasion ? draft.customOccasion : occasionLabel(occasion);
-  const songId = useMemo(() => extractYouTubeId(draft.songInput), [draft.songInput]);
+  // Editing a card that still carries its old YouTube song: remember what
+  // the server had, so an untouched song is left exactly as it is.
+  const [originalLegacySongId, setOriginalLegacySongId] = useState<string | null>(null);
+  const songId = draft.legacySongId;
   const signoff = draft.signoff.trim() || defaultSignoff(occasion);
 
   const fillSeed = () => {
@@ -222,6 +241,16 @@ export function Wizard() {
   };
 
   // ---------- actions ----------
+  /** The song fields each save path sends. Three shapes: an Audius pick
+   *  replaces whatever was there; an untouched legacy song is sent as
+   *  nothing; a removal (of either kind) sends an explicit clear. */
+  const songPatch = (): Record<string, unknown> => {
+    if (draft.song) return { song: draft.song };
+    if (originalLegacySongId && draft.legacySongId) return {}; // untouched YouTube song
+    if (originalLegacySongId || draft.legacySongId) return { song: null }; // removed
+    return { song: null };
+  };
+
   const saveEdits = async (): Promise<boolean> => {
     if (!editingCard) return false;
     setBusy(true);
@@ -239,7 +268,7 @@ export function Wizard() {
           message: draft.message,
           signoff,
           theme: draft.theme,
-          songId,
+          ...songPatch(),
         }),
       });
       if (!res.ok) {
@@ -290,7 +319,7 @@ export function Wizard() {
           message: draft.message,
           signoff,
           theme: draft.theme,
-          songId,
+          ...songPatch(),
         }),
       }).catch(() => {});
       if (!(await syncPhotos(madeCard))) return null;
@@ -307,8 +336,7 @@ export function Wizard() {
         message: draft.message,
         signoff,
         theme: draft.theme,
-        songId,
-        songProvider: songId ? "youtube" : null,
+        song: draft.song,
         // Photos are stored separately in private R2 once this draft has a
         // stable, owner-protected card id. They never travel in a D1 row.
         photos: [],
@@ -417,8 +445,7 @@ export function Wizard() {
               message: draft.message,
               signoff,
               theme: draft.theme,
-              songId,
-              songProvider: songId ? "youtube" : null,
+              song: draft.song,
               replyTo: params.get("replyTo"),
             },
             recipients: bulkRecipients.map((r) => ({ email: r.email, name: r.name })),
@@ -617,7 +644,7 @@ export function Wizard() {
                   <MessageStep
                     draft={draft}
                     set={set}
-                    songId={songId}
+                    onOpenPicker={() => setPickerOpen(true)}
                     fillSeed={fillSeed}
                     onNext={() => setStepTracked(3)}
                     canNext={Boolean(canNext)}
@@ -652,7 +679,6 @@ export function Wizard() {
                   <ReadyStep
                     draft={draft}
                     signoff={signoff}
-                    songId={songId}
                     when={when}
                     setWhen={setWhen}
                     date={date}
@@ -709,14 +735,23 @@ export function Wizard() {
                   }}
                 />
               </motion.div>
-              {songId && (
+              {(draft.song || draft.legacySongId) && (
                 <div className="mt-3 rounded-2xl bg-paper border border-ink/8 p-3.5 flex items-center gap-3">
-                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-blush-soft text-blush">
-                    <Music className="h-4 w-4" />
-                  </span>
+                  {draft.song?.artwork ? (
+                     
+                    <img src={draft.song.artwork} alt="" className="h-9 w-9 rounded-xl object-cover" />
+                  ) : (
+                    <span className="grid h-9 w-9 place-items-center rounded-xl bg-blush-soft text-blush">
+                      <Music className="h-4 w-4" />
+                    </span>
+                  )}
                   <div className="min-w-0">
-                    <p className="text-[13px] font-medium text-ink/85 truncate">Their song is attached</p>
-                    <p className="text-[11.5px] text-ink/45">One tap away, right under your words</p>
+                    <p className="text-[13px] font-medium text-ink/85 truncate">
+                      {draft.song ? draft.song.title : "Their song is attached"}
+                    </p>
+                    <p className="text-[11.5px] text-ink/45 truncate">
+                      {draft.song?.artist ?? "One tap away, right under your words"}
+                    </p>
                   </div>
                 </div>
               )}
@@ -748,12 +783,31 @@ export function Wizard() {
           message: draft.message || "Your words will be right here.",
           signoff,
           theme: draft.theme,
+          song: draft.song
+            ? {
+                id: draft.song.id,
+                provider: "audius",
+                title: draft.song.title,
+                artist: draft.song.artist,
+                artwork: draft.song.artwork,
+                duration: draft.song.duration,
+                permalink: draft.song.permalink,
+              }
+            : null,
           songId,
           photos: draft.photos,
           watermark: true,
           plan: "free",
         }}
         occasionLabel={effectiveOccasionLabel}
+      />
+
+      {/* The Audius song picker */}
+      <SongPicker
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        recipientName={draft.recipientName}
+        onPick={(song) => set("song", song)}
       />
     </div>
   );
@@ -862,7 +916,7 @@ function OccasionPicker({
 function MessageStep({
   draft,
   set,
-  songId,
+  onOpenPicker,
   fillSeed,
   onNext,
   canNext,
@@ -870,7 +924,7 @@ function MessageStep({
 }: {
   draft: Draft;
   set: <K extends keyof Draft>(key: K, value: Draft[K]) => void;
-  songId: string | null;
+  onOpenPicker: () => void;
   fillSeed: () => void;
   onNext: () => void;
   canNext: boolean;
@@ -955,43 +1009,88 @@ function MessageStep({
 
       {/* Song */}
       <div className="space-y-2">
-        <Label htmlFor="song" className="text-[13.5px] font-medium text-ink/80 flex items-center gap-2">
+        <Label className="text-[13.5px] font-medium text-ink/80 flex items-center gap-2">
           <Music className="h-4 w-4 text-blush" />
           Add a song
-          <span className="text-[11px] font-normal text-ink/40">one tap, playing while they read · with the full card</span>
+          <span className="text-[11px] font-normal text-ink/40">millions of tracks, one tap while they read · with the full card</span>
         </Label>
-        <div className="flex gap-2">
-          <Input
-            id="song"
-            value={draft.songInput}
-            onChange={(e) => set("songInput", e.target.value)}
-            placeholder="Paste a YouTube link..."
-            className="rounded-full bg-paper"
-          />
-        </div>
-        {draft.songInput && !songId && (
-          <p className="text-[12px] text-blush">That does not look like a YouTube link Panda can use.</p>
-        )}
-        {songId && (
-          <div className="flex items-center gap-3 rounded-2xl bg-paper border border-ink/8 p-3">
-            { }
-            <img
-              src={`https://i.ytimg.com/vi/${songId}/mqdefault.jpg`}
-              alt="Song thumbnail"
-              className="h-12 w-[72px] rounded-lg object-cover"
-            />
+
+        {draft.song ? (
+          <div className="flex items-center gap-3 rounded-2xl bg-paper border border-ink/8 p-3 shadow-[0_10px_26px_-18px_rgba(22,36,28,0.4)]">
+            {draft.song.artwork ? (
+               
+              <img
+                src={draft.song.artwork}
+                alt=""
+                className="h-12 w-12 rounded-xl object-cover"
+              />
+            ) : (
+              <span className="grid h-12 w-12 place-items-center rounded-xl bg-blush-soft text-blush">
+                <Music className="h-5 w-5" />
+              </span>
+            )}
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-medium text-ink/85">Song attached</p>
-              <p className="text-[11.5px] text-ink/45">One tap away, right under your words</p>
+              <p className="text-[13px] font-medium text-ink/85 truncate">{draft.song.title}</p>
+              <p className="text-[11.5px] text-ink/45 truncate">
+                {draft.song.artist}
+                {draft.song.duration ? ` · ${Math.floor(draft.song.duration / 60)}:${String(draft.song.duration % 60).padStart(2, "0")}` : ""}
+              </p>
             </div>
             <button
-              onClick={() => set("songInput", "")}
+              onClick={onOpenPicker}
+              className="text-[11.5px] font-medium text-ink/45 hover:text-jade px-2 py-1"
+            >
+              change
+            </button>
+            <button
+              onClick={() => set("song", null)}
               className="p-1.5 rounded-full hover:bg-ink/5"
               aria-label="Remove song"
             >
               <X className="h-4 w-4 text-ink/50" />
             </button>
           </div>
+        ) : draft.legacySongId ? (
+          /* A card from before Audius: its YouTube song rides along unless removed. */
+          <div className="flex items-center gap-3 rounded-2xl bg-paper border border-ink/8 p-3">
+            <span className="grid h-12 w-12 place-items-center rounded-xl bg-ink/[0.06] text-ink/60">
+              <Music className="h-5 w-5" />
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-medium text-ink/85">A song from before is still attached</p>
+              <p className="text-[11.5px] text-ink/45">Keep it, or pick a fresh one from the catalog</p>
+            </div>
+            <button
+              onClick={onOpenPicker}
+              className="text-[11.5px] font-medium text-jade hover:text-jade/80 px-2 py-1"
+            >
+              pick new
+            </button>
+            <button
+              onClick={() => set("legacySongId", null)}
+              className="p-1.5 rounded-full hover:bg-ink/5"
+              aria-label="Remove song"
+            >
+              <X className="h-4 w-4 text-ink/50" />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={onOpenPicker}
+            className="group flex w-full items-center gap-3 rounded-2xl border border-dashed border-ink/15 bg-paper/60 px-4 py-3.5 text-left transition-all hover:border-blush/45 hover:bg-blush/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blush/40"
+          >
+            <span className="grid h-10 w-10 place-items-center rounded-full bg-blush-soft text-blush transition-transform group-hover:scale-105">
+              <Music className="h-4.5 w-4.5" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[13.5px] font-medium text-ink/80">Pick a song from the catalog</span>
+              <span className="mt-0.5 block text-[11.5px] text-ink/45">
+                Search millions of tracks, hear 30 seconds, attach the one that fits
+              </span>
+            </span>
+            <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-ink/30 transition-transform group-hover:translate-x-0.5 group-hover:text-blush" />
+          </button>
         )}
       </div>
 
@@ -1078,7 +1177,6 @@ function MessageStep({
 function ReadyStep({
   draft,
   signoff,
-  songId,
   when,
   setWhen,
   date,
@@ -1104,7 +1202,6 @@ function ReadyStep({
 }: {
   draft: Draft;
   signoff: string;
-  songId: string | null;
   when: "now" | "day";
   setWhen: (v: "now" | "day") => void;
   date: string;

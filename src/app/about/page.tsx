@@ -90,7 +90,7 @@ export default function AboutPage() {
                 {
                   n: 2,
                   t: "Make it yours",
-                  d: "Add a song from YouTube and a couple of photos. Pick a theme that is so them.",
+                  d: "Pick a song from the music catalog and a couple of photos. Choose a theme that is so them.",
                 },
                 {
                   n: 3,
