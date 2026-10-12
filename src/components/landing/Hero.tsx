@@ -182,7 +182,7 @@ export function Hero() {
         {/* Mobile: the phone demo rides high, right under the pitch, so the
             product is seen before the picker asks anything. Desktop keeps
             the two-column arrangement. */}
-        <div className="grid gap-10 lg:grid-cols-[1.05fr_0.85fr] lg:items-center lg:gap-8">
+        <div className="grid gap-10 lg:grid-cols-[1.05fr_0.85fr] lg:items-start lg:gap-8">
           {/* Left: the pitch */}
           <div className="text-center lg:text-left">
             <motion.p
@@ -362,7 +362,7 @@ export function Hero() {
           </div>
 
           {/* Right: on desktop, the card as it arrives */}
-          <div className="relative hidden lg:block">
+          <div className="relative hidden lg:block lg:pt-7">
             <div
               className="absolute -inset-8 rounded-[3rem] pointer-events-none"
               style={{
