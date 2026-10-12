@@ -133,6 +133,12 @@ wrapper in `worker-entry.ts`. In **Workers & Pages → panda-messages → Settin
 → Builds**, configure the production branch with exactly one of these safe
 setups:
 
+The committed `bunfig.toml` disables reads from Bun's shared global cache.
+This keeps `bun install --frozen-lockfile` reliable if a CI cache restore was
+interrupted. It does not loosen the lockfile or skip dependency scripts.
+The build commands also remove generated Next/OpenNext output before building,
+so a damaged restored Turbopack cache cannot be reused.
+
 | Build command | Deploy command |
 | --- | --- |
 | `npm run cf:build` | `npm run cf:deploy:built` |

@@ -1,0 +1,4 @@
+# Do not read the shared global Bun cache. A partially restored cache entry
+# can otherwise make an immutable install fail before the application builds.
+[install.cache]
+disable = true

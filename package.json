@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
-    "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
-    "cf:build": "rm -rf .open-next && opennextjs-cloudflare build",
+    "build": "node scripts/clean-build-cache.mjs --next-only && next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
+    "cf:build": "node scripts/clean-build-cache.mjs && opennextjs-cloudflare build",
     "cf:deploy:built": "node scripts/deploy-worker.mjs",
     "cf:deploy": "npm run cf:build && npm run cf:deploy:built",
     "cf:preview": "npm run cf:build && wrangler dev .open-next/worker.js --local",
