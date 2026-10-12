@@ -135,10 +135,13 @@ setups:
 
 | Build command | Deploy command |
 | --- | --- |
-| `npm run cf:build` | `npx wrangler deploy` |
+| `npm run cf:build` | `npm run cf:deploy:built` |
 | *(leave empty)* | `npm run deploy` |
 
-Use the first setup for the clearest build log. Do not use a blank Build
+Use the first setup for the clearest build log. `cf:deploy:built` retries only
+a transient Cloudflare Cron Trigger API 5xx. The Worker version can be live
+before that separate trigger update returns, so this prevents a one-off
+schedule timeout from falsely failing a release. Do not use a blank Build
 command together with `npx wrangler deploy`: that command alone cannot create
 the OpenNext output. Do not set `npm run cf:build` as the Build command and
 `npm run deploy` as the Deploy command together, because that builds twice.
@@ -165,7 +168,7 @@ What is committed for this path:
 - `wrangler.toml` — entry, `nodejs_compat`, asset, D1 and R2 bindings,
   non-secret vars, the cron trigger and observability.
 
-`npm run cf:build && npx wrangler deploy --dry-run` builds and validates the
+`npm run cf:build && npm run cf:deploy:built -- --dry-run` builds and validates the
 whole worker locally before a real deploy (the bundle is about 7.6MB raw,
 1.6MB gzipped). Running `wrangler deploy` alone from a clean checkout is not
 enough because the OpenNext output has not been generated yet.
