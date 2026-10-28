@@ -78,7 +78,7 @@ export default function MessageWriterPage() {
                   onChange={(e) => setTheirName(e.target.value)}
                   placeholder="Their name"
                   maxLength={40}
-                  className="w-full rounded-full border border-ink/12 bg-paper px-4 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-jade/30"
+                  className="w-full rounded-full border border-ink/12 bg-paper px-4 py-2.5 text-[14px] placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-jade/30 focus:border-jade/40 transition-shadow"
                 />
               </div>
               <div className="space-y-2">
@@ -90,7 +90,7 @@ export default function MessageWriterPage() {
                   onChange={(e) => setYourName(e.target.value)}
                   placeholder="Your name"
                   maxLength={40}
-                  className="w-full rounded-full border border-ink/12 bg-paper px-4 py-2.5 text-[14px] focus:outline-none focus:ring-2 focus:ring-jade/30"
+                  className="w-full rounded-full border border-ink/12 bg-paper px-4 py-2.5 text-[14px] placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-jade/30 focus:border-jade/40 transition-shadow"
                 />
               </div>
             </div>
@@ -182,7 +182,7 @@ export default function MessageWriterPage() {
                 onClick={() => {
                   setSeed((s) => s + 11);
                 }}
-                className="sheen inline-flex items-center gap-2 rounded-full bg-jade text-white text-[14px] font-semibold px-5 py-3 hover:bg-jade-deep transition-all"
+                className="sheen inline-flex items-center gap-2 rounded-full bg-jade text-white text-[14px] font-semibold px-5 py-3 shadow-[0_14px_30px_-10px_rgba(21,122,85,0.6)] hover:bg-jade-deep hover:shadow-[0_18px_36px_-12px_rgba(21,122,85,0.7)] active:scale-[0.98] transition-all"
               >
                 <RefreshCw className="h-4 w-4" />
                 Write three drafts
@@ -191,10 +191,10 @@ export default function MessageWriterPage() {
                 onClick={() => setPandaMode((v) => !v)}
                 id="panda-voice"
                 className={cn(
-                  "inline-flex items-center gap-2 rounded-full border-2 text-[14px] font-semibold px-5 py-2.5 transition-all",
+                  "inline-flex items-center gap-2 rounded-full border-2 text-[14px] font-semibold px-5 py-2.5 transition-all active:scale-[0.98]",
                   pandaMode
                     ? "border-gold bg-gold-soft text-[#8C6D10]"
-                    : "border-ink/12 text-ink/70 hover:border-gold/50"
+                    : "border-ink/15 text-ink/75 hover:border-gold/50 hover:text-ink"
                 )}
                 aria-pressed={pandaMode}
               >
@@ -224,7 +224,7 @@ export default function MessageWriterPage() {
                   <div className="mt-3.5 flex items-center gap-2">
                     <button
                       onClick={() => copy(d, i)}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-ink/12 px-3.5 py-1.5 text-[12px] font-medium text-ink/60 hover:text-jade hover:border-jade/40 transition-all"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-ink/12 px-3.5 py-1.5 text-[12px] font-medium text-ink/65 hover:text-jade hover:border-jade/40 active:scale-[0.97] transition-all"
                     >
                       {copiedIdx === i ? (
                         <>
@@ -242,7 +242,7 @@ export default function MessageWriterPage() {
                           `/create?occasion=${occasion}${theirName ? `&custom=` : ""}`
                         )
                       }
-                      className="inline-flex items-center gap-1.5 rounded-full border border-ink/12 px-3.5 py-1.5 text-[12px] font-medium text-ink/60 hover:text-jade hover:border-jade/40 transition-all"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-ink/12 px-3.5 py-1.5 text-[12px] font-medium text-ink/65 hover:text-jade hover:border-jade/40 active:scale-[0.97] transition-all"
                     >
                       <Sparkles className="h-3.5 w-3.5" /> Put it on a card
                     </button>
@@ -252,7 +252,7 @@ export default function MessageWriterPage() {
             </AnimatePresence>
           </div>
 
-          <p className="mt-6 text-center text-[12.5px] text-ink/40 max-w-md mx-auto leading-relaxed">
+          <p className="mt-6 text-center text-[12.5px] text-ink/50 max-w-md mx-auto leading-relaxed">
             Every draft is assembled by hand from pieces a person wrote. No model runs, no
             waiting, nothing identical twice. When one makes you feel something, that is the one.
           </p>

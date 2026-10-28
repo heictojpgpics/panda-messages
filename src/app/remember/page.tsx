@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Check, Bell } from "lucide-react";
+import Link from "next/link";
 
 export default function RememberPage() {
   const [email, setEmail] = useState("");
@@ -76,32 +77,39 @@ export default function RememberPage() {
                   <div className="flex gap-2">
                     <Input
                       type="email"
+                      inputMode="email"
+                      autoComplete="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && join()}
                       placeholder="you@email.com"
                       className="rounded-full bg-paper"
                     />
-                    <Button onClick={join} disabled={busy} className="rounded-full px-5">
+                    <Button
+                      onClick={join}
+                      disabled={busy || !email.trim()}
+                      className="sheen rounded-full px-5 font-semibold"
+                    >
                       <Bell className="h-4 w-4" />
+                      Notify me
                     </Button>
                   </div>
-                  <p className="mt-3 text-[11.5px] text-ink/40">
+                  <p className="mt-3 text-[11.5px] text-ink/50">
                     One email when it launches. Nothing else, ever.
                   </p>
                 </>
               )}
             </div>
 
-            <p className="mt-7 text-[13.5px] text-ink-55">
+            <p className="mt-7 text-[13.5px] text-ink/55">
               In the meantime, Panda can already send a card on any day you pick.
             </p>
-            <a
+            <Link
               href="/create"
-              className="mt-4 sheen inline-flex items-center gap-2 rounded-full bg-jade text-white text-[15px] font-semibold px-6 py-3.5 shadow-[0_14px_30px_-10px_rgba(21,122,85,0.6)] hover:bg-jade-deep"
+              className="mt-4 sheen inline-flex items-center gap-2 rounded-full bg-jade text-white text-[15px] font-semibold px-6 py-3.5 shadow-[0_14px_30px_-10px_rgba(21,122,85,0.6)] hover:bg-jade-deep active:scale-[0.99] transition-all"
             >
               Schedule a card
-            </a>
+            </Link>
           </div>
         </div>
       </main>

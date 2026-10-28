@@ -271,3 +271,33 @@ Under the hood: `users.credits`, `cards.batch_id`, `cards.pack_id`, a `purchases
 ## Follow-ups in the same pass
 
 The wizard used to read its saved draft from localStorage during the first render, so a returning sender got a hydration mismatch (the server said Step 1, the browser jumped to Step 4). The restore now happens after mount: first frames agree everywhere, then the saved step takes over. Also fixed the pack-cancellation path so a pack card returns one credit instead of refunding the entire pack purchase.
+
+## Interface refinement pass (v8)
+
+A full-surface UI/UX audit and polish round, driven by walking every page at desktop, tablet, and phone sizes next to the source: architecture, styling tokens, motion, and the send-to-open user journey.
+
+**Real defects found and fixed**
+
+- The wizard's theme grid labeled every wrapping with `name.split(" ")[0]`, so half the collection read as "Long", "Pressed", "Sea", "Berry", "Night". The grid now carries full names on a stable two-line label, five columns wide, with a soft jade tint behind the selected tile.
+- `.glass-card` mixed `color-mix()` and `backdrop-filter` in one rule. The dev server's Lightning CSS lowering pass silently dropped the backdrop blur whenever it lowered the color-mix (production kept it, so the frosted nav looked broken at 390px in every dev session and no one noticed). The mixes are pre-resolved to plain rgba values; dev and production now render the same frost.
+- A guest who paid and tapped "Watch for the moment it opens" landed on a generic no-account wall with no mention of the password link that had just been emailed. The success CTA now carries the paid flag, the dashboard explains the claim link, and Sign in shuttles you back to the exact card via `?next=`.
+- The waitlist page used an invalid `text-ink-55` class (rendered as default ink) and an icon-only submit button. Both replaced: `text-ink/55`, and a labelled "Notify me" button.
+- Anchor links (#examples, #pricing) scrolled their headings under the fixed pill nav. Every anchored id now reserves scroll-margin.
+- The library's copy buttons were hover-only: invisible on every touch device. They stay visible on small screens and defer to hover reveal from md up.
+- The mobile menu opened instantly, ignored Escape, stayed open on outside taps and route changes, and let the page scroll behind it. It now drops in with a staggered curtain animation, locks scroll, closes on Escape/outside-pointer/navigation, and carries proper aria wiring.
+- The footer's `mt-24` stacked ~200px of dead ivory under the final CTA.
+
+**Craft passes**
+
+- Eyebrow letter-spacing standardized at 0.24em across every landing section; hero copy tightened so the sub-headline no longer strands a one-word widow ("...happy cry." became "...Happy cries have been reported.").
+- Meaningful fine print lifted from ink/35-45 to ink/50-60: captions, helper lines, counters, and legal notes clear AA contrast without flattening the hierarchy.
+- Every tappable surface gained a press state: `active:scale` on buttons and links, `whileTap` on framer tiles, and a shared `.tap-feedback` utility for plain tiles. Primary CTAs gained hover shadow lift.
+- Example cards in the landing grid now stretch to equal heights; theme tiles, pack cards, and occasion tiles share one selected-state language (jade border + jade-soft tint + shadow).
+- The testimonial rail snaps; library rows get a quiet hover fill; the message writer's controls gained focus border transitions and steadier button hierarchy.
+- Checkout gained a "Total" label over the price, email inputs gained `inputMode`/`autocomplete` everywhere, and auth errors are announced with `role="alert"`.
+- Typographic hygiene went global: headings balance, body copy wraps pretty, and the viewport allows `viewport-fit=cover` for the card scene on notched phones.
+- The desktop nav's link row now starts at `lg` (1024px): tablets get the calm mobile menu instead of a squeezed seven-item pill.
+
+**Untouched on purpose**: the card-opening scene (envelope, wax, letter, reactions) - audited closely and already excellent.
+
+**Verification**: typecheck, lint, and production build all pass; the built CSS carries the backdrop blur; wizard themes read in full at 390px and 1440px; the guest pay-then-watch flow lands on the paid-aware dashboard; the mobile menu passes open/Escape/outside-click/route-change checks with scroll locked; no horizontal overflow at 390, 768, or 1440.

@@ -139,6 +139,13 @@ patterns.
 
 ## What is new since the first release
 
+- A full interface refinement pass (v8): readable full-name theme labels in
+  the wizard, a working frosted nav in dev sessions (a CSS lowering pass had
+  been stripping the backdrop blur), a paid-aware dashboard handoff for
+  guest checkout, an animated and properly dismissible mobile menu, anchor
+  links that no longer scroll headings under the fixed nav, touch-visible
+  copy buttons in the message library, and a global contrast + press-state
+  polish round across every page
 - The sender gets an email the moment the card is opened and for every
   reply, so the watch continues even off-site.
 - Scheduled cards are fully editable until the morning they send, from

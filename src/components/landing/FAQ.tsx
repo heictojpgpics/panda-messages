@@ -32,7 +32,7 @@ export function FAQ() {
                 <button
                   onClick={() => setOpen(isOpen ? null : i)}
                   aria-expanded={isOpen}
-                  className="w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-4.5 text-left"
+                  className="w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-4.5 text-left rounded-2xl transition-colors hover:bg-ink/[0.025] focus-visible:outline-none"
                 >
                   <span className="font-medium text-[14.5px] text-ink/90">{f.q}</span>
                   <motion.span

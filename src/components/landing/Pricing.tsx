@@ -54,8 +54,8 @@ function PackBody({ pack, loved }: { pack: (typeof PACKS)[number]; loved: boolea
         href="/create"
         className={
           loved
-            ? "sheen mt-8 inline-flex justify-center items-center gap-2 rounded-full bg-jade text-white font-semibold px-6 py-3.5 shadow-[0_14px_30px_-10px_rgba(21,122,85,0.65)] hover:bg-jade-deep transition-all active:scale-[0.99]"
-            : "mt-8 inline-flex justify-center rounded-full border-2 border-ink/15 bg-transparent text-ink font-semibold px-6 py-3.5 hover:border-ink/40 transition-all active:scale-[0.99]"
+            ? "sheen mt-8 inline-flex justify-center items-center gap-2 rounded-full bg-jade text-white font-semibold px-6 py-3.5 shadow-[0_14px_30px_-10px_rgba(21,122,85,0.65)] hover:bg-jade-deep hover:shadow-[0_18px_36px_-12px_rgba(21,122,85,0.7)] transition-all active:scale-[0.99]"
+            : "mt-8 inline-flex justify-center rounded-full border-2 border-ink/20 bg-transparent text-ink font-semibold px-6 py-3.5 hover:border-ink/45 hover:bg-ink/[0.03] transition-all active:scale-[0.99]"
         }
       >
         {pack.id === "single" ? "Send one card" : `Get ${pack.cards} cards`}
@@ -139,7 +139,7 @@ export function Pricing() {
           <p className="text-center text-[11px] font-bold uppercase tracking-[0.22em] text-ink/40">
             Every card, from every pack
           </p>
-          <ul className="mt-4 grid sm:grid-cols-2 gap-x-8 gap-y-2.5">
+          <ul className="mt-4 grid sm:grid-cols-2 gap-x-8 gap-y-3">
             {EVERY_CARD.map((f) => (
               <li key={f} className="flex gap-2.5 items-start text-[13px] text-ink/75">
                 <Check className="h-4 w-4 text-jade shrink-0 mt-0.5" strokeWidth={2.5} />
@@ -147,7 +147,7 @@ export function Pricing() {
               </li>
             ))}
           </ul>
-          <p className="mt-5 text-center text-[12.5px] text-ink/50">
+          <p className="mt-5 text-center text-[12.5px] text-ink/55">
             Cancel any card before it sends for a full refund. Credits never expire.
           </p>
         </div>
@@ -175,7 +175,7 @@ export function Pricing() {
           </div>
           <Link
             href="/create"
-            className="shrink-0 rounded-full bg-jade text-white px-5 py-3 text-[13.5px] font-semibold shadow-[0_10px_24px_-10px_rgba(21,122,85,0.6)] hover:bg-jade-deep transition-colors"
+            className="shrink-0 rounded-full bg-jade text-white px-5 py-3 text-[13.5px] font-semibold shadow-[0_10px_24px_-10px_rgba(21,122,85,0.6)] hover:bg-jade-deep active:scale-[0.98] transition-all"
           >
             Try it
           </Link>

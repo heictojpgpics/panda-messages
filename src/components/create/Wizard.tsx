@@ -870,8 +870,8 @@ function OccasionPicker({
             key={o.id}
             onClick={() => onPick(o.id)}
             className={cn(
-              "relative card-lift rounded-xl bg-paper border-2 px-3 py-3.5 text-center",
-              value === o.id ? "border-jade" : "border-transparent hover:border-ink/10"
+              "relative card-lift tap-feedback rounded-xl bg-paper border-2 px-3 py-3.5 text-center",
+              value === o.id ? "border-jade bg-jade-soft/30" : "border-transparent hover:border-ink/10"
             )}
           >
             {o.badge && (
@@ -993,7 +993,7 @@ function MessageStep({
           autoFocus
         />
         <div className="flex justify-between items-center">
-          <p className="text-[11.5px] text-ink/40">
+          <p className="text-[11.5px] text-ink/50">
             <button
               onClick={fillSeed}
               className="font-medium text-jade link-pretty"
@@ -1141,7 +1141,7 @@ function MessageStep({
       {/* Theme picker */}
       <div className="space-y-2">
         <p className="text-[13.5px] font-medium text-ink/80">Choose a theme for them</p>
-        <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+        <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
           {THEMES.map((t) => {
             const active = draft.theme === t.id;
             return (
@@ -1150,18 +1150,20 @@ function MessageStep({
                 onClick={() => set("theme", t.id)}
                 title={t.blurb}
                 className={cn(
-                  "relative rounded-xl p-1.5 border-2 bg-paper flex flex-col items-center gap-1 transition-all",
-                  active ? "border-jade" : "border-transparent hover:border-ink/10"
+                  "relative tap-feedback rounded-xl p-1.5 border-2 bg-paper flex flex-col items-center gap-1 transition-all",
+                  active
+                    ? "border-jade bg-jade-soft/30 shadow-[0_8px_20px_-10px_rgba(21,122,85,0.45)]"
+                    : "border-transparent hover:border-ink/10"
                 )}
                 aria-pressed={active}
               >
-                <EnvelopeChip theme={t} size={48} />
-                <span className="text-[9.5px] font-medium text-ink/70 leading-none text-center">{t.name.split(" ")[0]}</span>
+                <EnvelopeChip theme={t} size={46} />
+                <span className="flex min-h-[22px] items-center px-0.5 text-[9px] font-medium text-ink/70 leading-[1.2] text-center">{t.name}</span>
               </button>
             );
           })}
         </div>
-        <p className="text-[11.5px] text-ink/45">
+        <p className="text-[11.5px] text-ink/50">
           {getTheme(draft.theme).blurb} All fourteen come with every card; try them in the preview, switch as often as you like.
         </p>
       </div>
@@ -1309,6 +1311,8 @@ function ReadyStep({
                 <Input
                   id="email"
                   type="email"
+                  inputMode="email"
+                  autoComplete="email"
                   value={recipientEmail}
                   onChange={(e) => setRecipientEmail(e.target.value)}
                   placeholder="sarah@email.com"
@@ -1451,7 +1455,7 @@ function ReadyStep({
                   onClick={() => setPackId(p.id)}
                   aria-pressed={selected}
                   className={cn(
-                    "relative rounded-2xl border-2 px-2.5 py-4 text-center transition-all",
+                    "relative tap-feedback rounded-2xl border-2 px-2.5 py-4 text-center transition-all",
                     selected
                       ? "border-jade bg-jade-soft/40 shadow-[0_10px_24px_-14px_rgba(21,122,85,0.5)]"
                       : "border-ink/10 bg-paper hover:border-ink/25"
@@ -1529,7 +1533,7 @@ function ReadyStep({
               : `Send it to ${draft.recipientName || "them"} · $${pack.price}`}
         </Button>
       )}
-      <p className="text-center text-[12px] text-ink/45">
+      <p className="text-center text-[12px] text-ink/55">
         Secure checkout · cancel before it sends for a full refund
       </p>
     </div>

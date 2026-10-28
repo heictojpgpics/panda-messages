@@ -35,7 +35,7 @@ export function EnvelopeDemo() {
           </div>
 
           <div className="order-1 md:order-2 text-center md:text-left">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-jade">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-jade">
               What they&rsquo;ll see
             </p>
             <h2 className="mt-3 font-display font-semibold text-ink text-balance text-[clamp(1.6rem,3.5vw,2.3rem)] leading-[1.15]">

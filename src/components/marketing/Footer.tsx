@@ -48,7 +48,7 @@ const COLUMNS: { title: string; links: { href: string; label: string }[] }[] = [
 
 export function Footer() {
   return (
-    <footer className="relative mt-24 bg-ink text-white/85 overflow-hidden grain">
+    <footer className="relative bg-ink text-white/85 overflow-hidden grain">
       <div className="absolute inset-0 bamboo-bg opacity-30" aria-hidden />
       <div
         className="absolute -top-24 left-1/2 -translate-x-1/2 w-[560px] h-[240px] rounded-full blur-3xl"

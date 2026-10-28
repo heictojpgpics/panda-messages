@@ -71,8 +71,8 @@ export function AuthPanel({
               setError(null);
             }}
             className={cn(
-              "flex-1 px-3 py-2 rounded-full text-[12.5px] font-semibold transition-all",
-              tab === id ? "bg-jade text-white" : "text-ink/60 hover:text-ink"
+              "flex-1 px-3 min-h-9 rounded-full text-[12.5px] font-semibold transition-all active:scale-[0.98]",
+              tab === id ? "bg-jade text-white shadow-[0_6px_14px_-6px_rgba(21,122,85,0.55)]" : "text-ink/60 hover:text-ink"
             )}
             aria-pressed={tab === id}
           >
@@ -113,10 +113,11 @@ export function AuthPanel({
             <Input
               id="auth-email"
               type="email"
+              inputMode="email"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@email.com"
-              autoComplete="email"
               className="rounded-full bg-paper h-11 pl-11"
               onKeyDown={(e) => e.key === "Enter" && password && submit()}
             />
@@ -140,19 +141,19 @@ export function AuthPanel({
           </div>
         </div>
 
-        {error && <p className="text-[12.5px] text-blush">{error}</p>}
+        {error && <p className="text-[12.5px] text-blush" role="alert">{error}</p>}
 
         <Button
           onClick={submit}
           disabled={busy || !email || !password}
-          className="sheen w-full h-12 rounded-full font-semibold"
+          className="sheen w-full h-12 rounded-full font-semibold shadow-[0_14px_30px_-10px_rgba(21,122,85,0.6)] hover:shadow-[0_18px_36px_-12px_rgba(21,122,85,0.7)] active:scale-[0.99] transition-all"
           size="lg"
         >
           {busy ? "One moment..." : tab === "signin" ? "Sign in" : "Create my account"}
           {!busy && <ArrowRight className="h-4 w-4" />}
         </Button>
 
-        <p className="text-center text-[11.5px] text-ink/40 leading-relaxed">
+        <p className="text-center text-[11.5px] text-ink/50 leading-relaxed">
           {tab === "signup"
             ? "Your cards stay yours, and you can watch them get opened. No spam, ever."
             : "Welcome back. Your cards have been waiting patiently."}

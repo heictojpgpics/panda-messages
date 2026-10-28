@@ -75,7 +75,7 @@ export function LiveWatch() {
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-20 sm:py-24">
         <div className="grid md:grid-cols-2 gap-14 items-center">
           <div className="text-center md:text-left order-2 md:order-1">
-            <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-jade">
+            <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-jade">
               <span className="live-dot h-2 w-2 rounded-full bg-jade" aria-hidden />
               Live, just for you
             </p>

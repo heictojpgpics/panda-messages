@@ -1,20 +1,23 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import Link from "next/link";
 import { AuthPanel } from "@/components/auth/AuthPanel";
 import { motion } from "framer-motion";
 
-export default function SignUpPage() {
+function SignUp() {
   const router = useRouter();
+  const params = useSearchParams();
+  const next = params.get("next") || "/dashboard";
 
   useEffect(() => {
     fetch("/api/auth/me")
       .then((r) => (r.ok ? r.json() : { user: null }))
-      .then((d) => d.user && router.replace("/dashboard"))
+      .then((d) => d.user && router.replace(next))
       .catch(() => {});
-  }, [router]);
+  }, [router, next]);
 
   return (
     <div className="min-h-screen bg-ivory relative flex items-center justify-center px-4 py-12">
@@ -35,7 +38,7 @@ export default function SignUpPage() {
           </p>
           <AuthPanel
             mode="signup"
-            onAuthed={() => router.push("/dashboard")}
+            onAuthed={() => router.push(next)}
           />
         </div>
         <p className="mt-5 text-center text-[13px] text-ink/50">
@@ -46,5 +49,13 @@ export default function SignUpPage() {
         </p>
       </motion.div>
     </div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-ivory" />}>
+      <SignUp />
+    </Suspense>
   );
 }

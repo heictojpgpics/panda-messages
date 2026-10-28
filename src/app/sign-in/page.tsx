@@ -1,21 +1,26 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import Link from "next/link";
 import { AuthPanel } from "@/components/auth/AuthPanel";
 import { motion } from "framer-motion";
 
-export default function SignInPage() {
+function SignIn() {
   const router = useRouter();
+  const params = useSearchParams();
+  // Where to land after the handshake. Defaults to the cards, but a
+  // dashboard handoff (a card just paid for) arrives as ?next=.
+  const next = params.get("next") || "/dashboard";
 
   useEffect(() => {
-    // Already signed in? Straight to the cards.
+    // Already signed in? Straight to where you were headed.
     fetch("/api/auth/me")
       .then((r) => (r.ok ? r.json() : { user: null }))
-      .then((d) => d.user && router.replace("/dashboard"))
+      .then((d) => d.user && router.replace(next))
       .catch(() => {});
-  }, [router]);
+  }, [router, next]);
 
   return (
     <div className="min-h-screen bg-ivory relative flex items-center justify-center px-4 py-12">
@@ -36,7 +41,7 @@ export default function SignInPage() {
           </p>
           <AuthPanel
             mode="signin"
-            onAuthed={() => router.push("/dashboard")}
+            onAuthed={() => router.push(next)}
           />
         </div>
         <p className="mt-5 text-center text-[13px] text-ink/50">
@@ -51,5 +56,13 @@ export default function SignInPage() {
         </p>
       </motion.div>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-ivory" />}>
+      <SignIn />
+    </Suspense>
   );
 }
