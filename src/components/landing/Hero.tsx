@@ -120,13 +120,13 @@ function ExampleCarousel() {
             onClick={() => setI(idx)}
             aria-label={`Show the ${EXAMPLES[idx].caption.split(" ·")[0]} card`}
             className={cn(
-              "h-1.5 rounded-full transition-all",
-              idx === i ? "w-5 bg-jade" : "w-1.5 bg-ink/20 hover:bg-ink/40"
+              "h-1.5 rounded-full transition-all duration-300",
+              idx === i ? "w-5 bg-jade" : "w-1.5 bg-ink/25 hover:bg-ink/45"
             )}
           />
         ))}
       </div>
-      <p className="text-[11px] text-ink/45">{ex.caption}</p>
+      <p className="text-[11px] text-ink/55">{ex.caption}</p>
     </div>
   );
 }
@@ -189,9 +189,9 @@ export function Hero() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.25, duration: 0.5 }}
-              className="text-[11px] sm:text-xs font-semibold uppercase tracking-[0.3em] text-jade"
+              className="text-[11px] sm:text-xs font-semibold uppercase tracking-[0.24em] text-jade"
             >
-              Personalized panda greeting cards & messages
+              Personalized panda greeting cards &amp; messages
             </motion.p>
 
             <motion.h1
@@ -212,8 +212,8 @@ export function Hero() {
               className="mt-4 text-ink-soft text-[15px] sm:text-base leading-relaxed max-w-lg mx-auto lg:mx-0"
             >
               ...You forgot? It happens. 💚 <strong className="text-ink">Panda</strong> will send them a
-              little card for you, right on the day. They open it like a gift. There is
-              usually a happy cry.
+              little card for you, right on the day. They open it like a gift. Happy
+              cries have been reported.
             </motion.p>
 
             {/* The demo, on a phone it comes right after the pitch */}
@@ -225,7 +225,7 @@ export function Hero() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.8 }}
-                className="mt-4 text-center text-[12px] text-ink/45"
+                className="mt-4 text-center text-[12px] text-ink/55"
               >
                 This lands in their inbox. <span className="text-jade font-semibold">They tap, it opens, they melt.</span>
               </motion.p>
@@ -238,7 +238,7 @@ export function Hero() {
               transition={{ delay: 0.5, duration: 0.55 }}
               className="mt-8 max-w-xl mx-auto lg:mx-0"
             >
-              <p className="text-[13px] text-ink/60 mb-3">
+              <p className="text-[13px] text-ink/65 mb-3">
                 Tell Panda the occasion:{" "}
                 <span className="text-jade font-semibold">
                   making and previewing is free
@@ -287,13 +287,14 @@ export function Hero() {
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.94 }}
                       transition={{ duration: 0.18 }}
+                      whileTap={{ scale: 0.965 }}
                       onClick={() => go(o.id)}
                       className="relative group card-lift rounded-xl bg-paper border border-ink/8 px-3 py-3.5 text-center"
                     >
                       {o.badge && (
                         <span
                           className={cn(
-                            "absolute -top-1.5 -right-1.5 text-[8.5px] font-bold tracking-wider px-1.5 py-0.5 rounded-full text-white",
+                            "absolute -top-1.5 -right-1.5 text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded-full text-white",
                             o.badge === "HOT" ? "bg-blush" : "bg-gold"
                           )}
                         >
@@ -312,7 +313,7 @@ export function Hero() {
               {hiddenCount > 0 && (
                 <button
                   onClick={() => setExpanded(true)}
-                  className="mt-3 text-[12.5px] text-jade font-medium link-pretty inline-flex items-center gap-1"
+                  className="mt-3 text-[12.5px] text-jade font-semibold link-pretty inline-flex items-center gap-1 py-1"
                   aria-expanded={expanded}
                 >
                   + See {hiddenCount} more occasions <ChevronDown className="h-3.5 w-3.5" />
@@ -330,13 +331,13 @@ export function Hero() {
                     placeholder="Write your own occasion"
                     aria-label="Write your own occasion"
                     maxLength={60}
-                    className="w-full rounded-full border border-ink/12 bg-paper pl-10 pr-4 py-3 text-[13.5px] placeholder:text-ink/40 focus:outline-none focus:ring-2 focus:ring-jade/40 focus:border-jade/50 transition-shadow"
+                    className="w-full rounded-full border border-ink/12 bg-paper pl-10 pr-4 py-3 text-[13.5px] placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-jade/40 focus:border-jade/50 transition-shadow"
                   />
                 </div>
                 <button
                   onClick={goCustom}
                   disabled={!custom.trim()}
-                  className="shrink-0 rounded-full border border-ink/12 bg-paper px-5 py-3 text-[13px] font-semibold text-ink/75 disabled:opacity-40 hover:border-jade/40 hover:text-jade transition-all"
+                  className="shrink-0 rounded-full border border-ink/15 bg-paper px-5 py-3 text-[13px] font-semibold text-ink/80 disabled:opacity-40 hover:border-jade/40 hover:text-jade active:scale-[0.97] transition-all"
                 >
                   Use it
                 </button>
@@ -350,12 +351,12 @@ export function Hero() {
 
               <button
                 onClick={surprise}
-                className="sheen mt-3 w-full inline-flex justify-center items-center gap-2 rounded-full bg-jade text-white font-semibold py-3.5 text-[15px] shadow-[0_14px_30px_-10px_rgba(21,122,85,0.65)] hover:bg-jade-deep active:scale-[0.99] transition-all"
+                className="sheen mt-3 w-full inline-flex justify-center items-center gap-2 rounded-full bg-jade text-white font-semibold py-3.5 text-[15px] shadow-[0_14px_30px_-10px_rgba(21,122,85,0.65)] hover:bg-jade-deep hover:shadow-[0_18px_36px_-12px_rgba(21,122,85,0.7)] active:scale-[0.99] transition-all"
               >
                 <Sparkles className="h-4 w-4" />
                 Surprise me
               </button>
-              <p className="mt-2.5 text-center text-[11.5px] italic text-ink/40">
+              <p className="mt-2.5 text-center text-[11.5px] italic text-ink/50">
                 Free to make and preview · about a minute
               </p>
             </motion.div>
@@ -378,7 +379,7 @@ export function Hero() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.8 }}
-              className="mt-5 text-center text-[12px] text-ink/45"
+              className="mt-5 text-center text-[12px] text-ink/55"
             >
               This lands in their inbox. <span className="text-jade font-semibold">They tap, it opens, they melt.</span>
             </motion.p>

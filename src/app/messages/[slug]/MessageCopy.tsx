@@ -16,8 +16,8 @@ export function MessageCopy({ text, long = false }: { text: string; long?: boole
   return (
     <li
       className={cn(
-        "group relative rounded-2xl border border-ink/8 bg-paper transition-all hover:border-jade/30",
-        long ? "p-5" : "pr-14 pl-5 py-3.5"
+        "group relative rounded-2xl border border-ink/8 bg-paper transition-all hover:border-jade/30 hover:bg-jade-soft/20",
+        long ? "p-5 pr-14" : "pr-14 pl-5 py-3.5"
       )}
     >
       <p className={cn("text-ink/85 leading-relaxed", long ? "text-[14px] font-display leading-[1.7]" : "text-[14px]")}>
@@ -31,7 +31,7 @@ export function MessageCopy({ text, long = false }: { text: string; long?: boole
           long && "top-4",
           copied
             ? "border-jade bg-jade text-white"
-            : "border-ink/12 text-ink/40 opacity-0 group-hover:opacity-100 hover:text-jade hover:border-jade/40 focus:opacity-100"
+            : "border-ink/12 text-ink/45 opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:text-jade hover:border-jade/40 focus-visible:opacity-100"
         )}
       >
         {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}

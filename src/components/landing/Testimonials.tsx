@@ -44,7 +44,7 @@ export function Testimonials() {
           </p>
         </div>
 
-        <div className="mt-12 flex gap-5 overflow-x-auto pb-4 no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="mt-12 flex gap-5 overflow-x-auto pb-4 no-scrollbar snap-x snap-proximity [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-4 px-4 sm:mx-0 sm:px-0">
           {QUOTES.map((q, i) => (
             <motion.figure
               key={i}

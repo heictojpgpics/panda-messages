@@ -75,6 +75,9 @@ export const viewport: Viewport = {
   themeColor: "#FBF9F4",
   width: "device-width",
   initialScale: 1,
+  // Notched phones: the card scene's full-bleed weather should reach the
+  // edges of the display, not stop at the safe area.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

@@ -61,8 +61,8 @@ export function StatsBar() {
 
   return (
     <section aria-label="Panda by the numbers" className="relative border-y border-ink/8 bg-paper/70 backdrop-blur-sm">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-4 text-center">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-9">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-7 md:gap-4 text-center">
           {items.map((item, i) => (
             <motion.div
               key={item.key}
@@ -78,11 +78,11 @@ export function StatsBar() {
               <span className={cn("font-display font-semibold text-[clamp(1.4rem,3vw,1.9rem)] tabular-nums", item.color)}>
                 {item.value}
               </span>
-              <span className="text-[12px] text-ink/55">{item.label}</span>
+              <span className="text-[12.5px] text-ink/60">{item.label}</span>
             </motion.div>
           ))}
         </div>
-        <p className="mt-5 text-center text-[11.5px] text-ink/40">
+        <p className="mt-5 text-center text-[11.5px] text-ink/55">
           {usageReady && live
             ? "Live from the bamboo forest. Every number is a real moment somebody caused."
             : "The shelf is stocked and Panda is waiting. Someone has to go first."}

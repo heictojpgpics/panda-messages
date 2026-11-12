@@ -147,6 +147,19 @@
     font-feature-settings: "cv11", "ss01";
     text-rendering: optimizeLegibility;
   }
+  /* Orphans and widows have no place in a product this considered.
+     Balance the display faces, keep body ragging pretty. */
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+  p, li, blockquote {
+    text-wrap: pretty;
+  }
+  /* The fixed pill nav owns the top of the viewport: anchored sections
+     must clear it, or their headings arrive already eaten. */
+  [id] {
+    scroll-margin-top: 6.5rem;
+  }
   ::selection {
     background: color-mix(in srgb, var(--jade) 25%, transparent);
   }
@@ -192,18 +205,21 @@
   color: transparent;
 }
 
-/* Frosted premium card */
+/* Frosted premium card.
+   Kept free of color-mix() on purpose: mixing it with backdrop-filter sends
+   the rule through a lowering pass that silently drops the blur. The rgba
+   values below are the same mixes, pre-resolved. */
 .glass-card {
-  background: color-mix(in srgb, #FFFFFF 82%, transparent);
+  background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(14px) saturate(1.2);
   -webkit-backdrop-filter: blur(14px) saturate(1.2);
-  border: 1px solid color-mix(in srgb, #FFFFFF 65%, var(--border));
+  border: 1px solid rgb(255 255 255 / 0.65);
   box-shadow: 0 1px 2px rgba(22, 36, 28, 0.05), 0 12px 40px -12px rgba(22, 36, 28, 0.18);
 }
 
 .dark .glass-card {
-  background: color-mix(in srgb, #16241C 78%, transparent);
-  border: 1px solid color-mix(in srgb, #243A2D 70%, transparent);
+  background: rgba(22, 36, 28, 0.78);
+  border: 1px solid rgba(36, 58, 45, 0.7);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 40px -12px rgba(0, 0, 0, 0.6);
 }
 
@@ -270,6 +286,36 @@
 }
 .marquee-track {
   animation: marquee-x var(--marquee-duration, 42s) linear infinite;
+}
+
+/* The mobile menu: a small curtain. Height is the only animated property,
+   so the list reflows once per frame at most and never thrashes layout. */
+@keyframes menu-drop {
+  from { opacity: 0; transform: translateY(-8px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.menu-drop {
+  animation: menu-drop 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: top center;
+}
+.menu-drop > * {
+  animation: menu-drop 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.menu-drop > *:nth-child(1) { animation-delay: 0.03s; }
+.menu-drop > *:nth-child(2) { animation-delay: 0.055s; }
+.menu-drop > *:nth-child(3) { animation-delay: 0.08s; }
+.menu-drop > *:nth-child(4) { animation-delay: 0.105s; }
+.menu-drop > *:nth-child(5) { animation-delay: 0.13s; }
+.menu-drop > *:nth-child(6) { animation-delay: 0.155s; }
+.menu-drop > *:nth-child(7) { animation-delay: 0.18s; }
+
+/* A press the thumb can feel, for tiles that lift on hover but need a
+   touch equivalent. Pair with active:scale-95 classes at call sites. */
+.tap-feedback {
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.tap-feedback:active {
+  transform: scale(0.965);
 }
 
 /* Gentle float for mascot/decor */
@@ -451,8 +497,13 @@
 
 @media (prefers-reduced-motion: reduce) {
   .float-soft, .float-soft-2, .drift-piece, .marquee-track, .spin-slow, .live-dot,
-  .scene-confetti-fall, .scene-confetti-sway, .scene-star, .scene-vinyl {
+  .scene-confetti-fall, .scene-confetti-sway, .scene-star, .scene-vinyl,
+  .menu-drop, .menu-drop > * {
     animation: none !important;
+  }
+  .tap-feedback, .tap-feedback:active {
+    transition-duration: 0.01ms !important;
+    transform: none !important;
   }
   .sheen::after { display: none; }
   html { scroll-behavior: auto; }

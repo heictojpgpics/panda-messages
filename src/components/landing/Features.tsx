@@ -41,7 +41,7 @@ export function Features() {
     <section className="relative">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-20 sm:py-24">
         <div className="text-center max-w-2xl mx-auto">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-jade">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-jade">
             Keep it forever
           </p>
           <h2 className="mt-3 font-display font-semibold text-ink text-balance text-[clamp(1.6rem,3.5vw,2.3rem)]">

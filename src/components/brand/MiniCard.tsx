@@ -36,7 +36,7 @@ export function MiniCard({
   return (
     <div
       className={cn(
-        "relative rounded-2xl border border-black/5 w-full text-center flex flex-col items-center",
+        "relative rounded-2xl border border-black/5 w-full text-center flex flex-col items-center justify-center",
         !compact && "px-6 pt-7 pb-6 gap-3",
         compact && "px-4 pt-5 pb-4 gap-2",
         className

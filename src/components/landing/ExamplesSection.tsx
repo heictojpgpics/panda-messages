@@ -67,16 +67,16 @@ export function ExamplesSection() {
           </p>
         </div>
 
-        <div className="mt-12 grid grid-cols-1 min-[560px]:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-5">
+        <div className="mt-12 grid grid-cols-1 min-[560px]:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-5 items-stretch">
           {EXAMPLES.map((ex, i) => (
             <div
               key={i}
               className="flex flex-col items-center gap-3"
             >
-              <div style={{ transform: `rotate(${[-1.5, 1.5, -1, 1][i % 4]}deg)` }}>
-                <MiniCard data={ex.data} />
+              <div className="w-full flex-1 flex flex-col justify-center" style={{ transform: `rotate(${[-1.5, 1.5, -1, 1][i % 4]}deg)` }}>
+                <MiniCard data={ex.data} className="h-full" />
               </div>
-              <p className="text-[12px] text-ink/45">{ex.caption}</p>
+              <p className="text-[12px] text-ink/55">{ex.caption}</p>
             </div>
           ))}
         </div>

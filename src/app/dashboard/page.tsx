@@ -179,6 +179,7 @@ function Dashboard() {
   }
 
   if (!authed) {
+    const signInHref = `/sign-in?next=${encodeURIComponent(`/dashboard${watchSlug ? `?watch=${watchSlug}` : ""}`)}`;
     return (
       <div className="min-h-screen bg-ivory grid place-items-center px-4 text-center">
         <div className="flex flex-col items-center gap-4 max-w-sm">
@@ -186,21 +187,21 @@ function Dashboard() {
           <h1 className="font-display font-semibold text-ink text-xl">
             Panda looked everywhere…
           </h1>
-          <p className="text-[13.5px] text-ink-soft">
+          <p className="text-[13.5px] text-ink-soft leading-relaxed">
             {params.get("paid")
               ? "Just paid? Check your inbox, the password link is already there. Or sign in if you had an account."
               : "No account on this device. Sign in and your cards will be right here."}
           </p>
           <div className="flex gap-2.5 mt-2">
             <Link
-              href="/sign-in"
-              className="rounded-full bg-jade text-white text-[14px] font-semibold px-6 py-3"
+              href={signInHref}
+              className="rounded-full bg-jade text-white text-[14px] font-semibold px-6 py-3 shadow-[0_12px_26px_-10px_rgba(21,122,85,0.6)] hover:bg-jade-deep active:scale-[0.98] transition-all"
             >
               Sign in
             </Link>
             <Link
               href="/"
-              className="rounded-full border-2 border-ink/12 text-ink text-[14px] font-semibold px-6 py-3"
+              className="rounded-full border-2 border-ink/15 text-ink text-[14px] font-semibold px-6 py-3 hover:border-ink/35 active:scale-[0.98] transition-all"
             >
               Back home
             </Link>
@@ -256,7 +257,7 @@ function Dashboard() {
         {watchCard && <WatchPanel card={watchCard} onDone={() => router.push("/dashboard")} />}
 
         {/* Tabs */}
-        <div className="mt-8 flex gap-1.5 p-1 rounded-full bg-ink/[0.05] w-fit border border-ink/10">
+        <div className="mt-8 flex gap-1 p-1 rounded-full bg-ink/[0.05] w-fit border border-ink/10">
           {(
             [
               ["cards", "My cards", Send],
@@ -268,8 +269,8 @@ function Dashboard() {
               key={id}
               onClick={() => setTab(id)}
               className={cn(
-                "inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-semibold transition-all",
-                tab === id ? "bg-jade text-white" : "text-ink/60 hover:text-ink"
+                "inline-flex items-center gap-1.5 px-4 min-h-9 rounded-full text-[13px] font-semibold transition-all active:scale-[0.97]",
+                tab === id ? "bg-jade text-white shadow-[0_6px_14px_-6px_rgba(21,122,85,0.55)]" : "text-ink/60 hover:text-ink"
               )}
               aria-pressed={tab === id}
             >
@@ -409,14 +410,14 @@ function CardRow({ card, onChange }: { card: DashCard; onChange: () => void }) {
           href={`/c/${card.slug}`}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-full border border-ink/12 px-4 py-2 text-[12.5px] font-medium text-ink/70 hover:border-jade/40 hover:text-jade transition-all"
+          className="inline-flex items-center gap-1.5 rounded-full border border-ink/12 px-4 py-2 text-[12.5px] font-medium text-ink/70 hover:border-jade/40 hover:text-jade active:scale-[0.97] transition-all"
         >
           <ExternalLink className="h-3.5 w-3.5" />
           Their view
         </a>
         <button
           onClick={copyLink}
-          className="inline-flex items-center gap-1.5 rounded-full border border-ink/12 px-4 py-2 text-[12.5px] font-medium text-ink/70 hover:border-jade/40 hover:text-jade transition-all"
+          className="inline-flex items-center gap-1.5 rounded-full border border-ink/12 px-4 py-2 text-[12.5px] font-medium text-ink/70 hover:border-jade/40 hover:text-jade active:scale-[0.97] transition-all"
         >
           {copied ? <Check className="h-3.5 w-3.5 text-jade" /> : <Copy className="h-3.5 w-3.5" />}
           {copied ? "Copied" : "Copy link"}
@@ -424,7 +425,7 @@ function CardRow({ card, onChange }: { card: DashCard; onChange: () => void }) {
         {editable && (
           <Link
             href={`/create?edit=${card.slug}`}
-            className="inline-flex items-center gap-1.5 rounded-full border border-ink/12 px-4 py-2 text-[12.5px] font-medium text-ink/70 hover:border-jade/40 hover:text-jade transition-all"
+            className="inline-flex items-center gap-1.5 rounded-full border border-ink/12 px-4 py-2 text-[12.5px] font-medium text-ink/70 hover:border-jade/40 hover:text-jade active:scale-[0.97] transition-all"
           >
             <Pencil className="h-3.5 w-3.5" />
             Edit
@@ -434,7 +435,7 @@ function CardRow({ card, onChange }: { card: DashCard; onChange: () => void }) {
           <button
             onClick={() => setConfirmOpen(true)}
             disabled={cancelling}
-            className="inline-flex items-center gap-1.5 rounded-full border border-blush/25 text-blush px-4 py-2 text-[12.5px] font-medium hover:bg-blush-soft/50 transition-all ml-auto"
+            className="inline-flex items-center gap-1.5 rounded-full border border-blush/25 text-blush px-4 py-2 text-[12.5px] font-medium hover:bg-blush-soft/50 active:scale-[0.97] transition-all ml-auto"
           >
             <Ban className="h-3.5 w-3.5" />
             {cancelling ? "Cancelling..." : "Cancel + refund"}
@@ -650,7 +651,7 @@ function OutboxTab({ mails }: { mails: OutboxMail[] }) {
 
   return (
     <div className="space-y-2.5">
-      <p className="text-[12px] text-ink/45 px-1">
+      <p className="text-[12px] text-ink/55 px-1">
         Every delivery email, kept as a record. In demo mode nothing leaves the building. With a
         Resend key, these are the exact emails that go out.
       </p>

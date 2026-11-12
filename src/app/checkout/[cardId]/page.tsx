@@ -180,15 +180,15 @@ export default function CheckoutPage() {
 
               <div className="mt-7 flex flex-col gap-2.5">
                 <Button
-                  onClick={() => router.push(`/dashboard?watch=${card?.slug ?? ""}`)}
-                  className="sheen h-12 rounded-full text-[15px] font-semibold"
+                  onClick={() => router.push(`/dashboard?watch=${card?.slug ?? ""}${claimUrl ? "&paid=1" : ""}`)}
+                  className="sheen h-12 rounded-full text-[15px] font-semibold shadow-[0_14px_30px_-10px_rgba(21,122,85,0.6)] hover:shadow-[0_18px_36px_-12px_rgba(21,122,85,0.7)] active:scale-[0.99] transition-all"
                   size="lg"
                 >
                   Watch for the moment it opens
                 </Button>
                 <button
                   onClick={() => router.push("/create")}
-                  className="text-[13.5px] font-medium text-ink/55 hover:text-jade py-2"
+                  className="text-[13.5px] font-medium text-ink/60 hover:text-jade py-2"
                 >
                   Make another card
                 </button>
@@ -235,9 +235,12 @@ export default function CheckoutPage() {
                       <p className="text-[12.5px] text-ink/55">to {card.recipientEmail}</p>
                     )}
                   </div>
-                  <p className="font-display font-semibold text-ink text-[22px] whitespace-nowrap">
-                    ${PACKS.find((p) => p.id === card?.packId)?.price ?? PACKS[0].price}
-                  </p>
+                  <div className="text-right shrink-0">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-ink/40">Total</p>
+                    <p className="font-display font-semibold text-ink text-[22px] leading-tight">
+                      ${PACKS.find((p) => p.id === card?.packId)?.price ?? PACKS[0].price}
+                    </p>
+                  </div>
                 </div>
                 {card?.packId && card.packId !== "single" && (
                   <p className="mt-2 text-[11.5px] text-ink/50 leading-relaxed">
@@ -255,7 +258,7 @@ export default function CheckoutPage() {
                     <Sparkles className="h-3 w-3" />
                     Demo checkout
                   </span>
-                  <span className="text-[11.5px] text-ink/40">nothing is actually charged</span>
+                  <span className="text-[11.5px] text-ink/50">nothing is actually charged</span>
                 </div>
 
                 <div className="space-y-2">
@@ -265,6 +268,8 @@ export default function CheckoutPage() {
                     <Input
                       id="co-email"
                       type="email"
+                      inputMode="email"
+                      autoComplete="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="you@email.com"
@@ -330,7 +335,7 @@ export default function CheckoutPage() {
                 <Button
                   onClick={pay}
                   disabled={!canPay || phase === "processing"}
-                  className="sheen w-full h-12 rounded-full text-[15px] font-semibold mt-1"
+                  className="sheen w-full h-12 rounded-full text-[15px] font-semibold mt-1 shadow-[0_14px_30px_-10px_rgba(21,122,85,0.6)] hover:shadow-[0_18px_36px_-12px_rgba(21,122,85,0.7)] active:scale-[0.99] transition-all"
                   size="lg"
                 >
                   {phase === "processing" ? (
@@ -346,7 +351,7 @@ export default function CheckoutPage() {
                   )}
                 </Button>
 
-                <p className="text-center text-[11.5px] text-ink/40 leading-relaxed">
+                <p className="text-center text-[11.5px] text-ink/50 leading-relaxed">
                   Secure checkout · edit or cancel any time before it sends, full refund.
                   <br />
                   Wire Stripe keys and this exact page becomes a real payment, nothing else changes.

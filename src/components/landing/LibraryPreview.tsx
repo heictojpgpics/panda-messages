@@ -44,19 +44,19 @@ export function LibraryPreview() {
                   <span className="text-xl" aria-hidden>{cat.emoji}</span>
                   <h3 className="font-display font-semibold text-ink text-[16.5px]">{cat.label}</h3>
                 </div>
-                <p className="mt-1.5 text-[12.5px] text-ink/50 leading-snug">{CATEGORY_COPY[cat.id]}</p>
-                <ul className="mt-4 space-y-2.5">
+                <p className="mt-1.5 text-[12.5px] text-ink/55 leading-snug">{CATEGORY_COPY[cat.id]}</p>
+                <ul className="mt-4 space-y-1">
                   {pages.map((p) => (
                     <li key={p.slug}>
                       <Link
                         href={`/messages/${p.slug}`}
-                        className="group flex items-center justify-between gap-2 text-[13.5px] text-ink/75 hover:text-jade transition-colors"
+                        className="group -mx-2 flex items-center justify-between gap-2 rounded-xl px-2 py-1.5 text-[13.5px] text-ink/75 hover:text-jade hover:bg-jade-soft/40 transition-colors"
                       >
                         <span className="flex items-center gap-1.5">
                           <Copy className="h-3.5 w-3.5 opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
                           {p.title}
                         </span>
-                        <span className="text-[11px] text-ink/35">{p.messages.length}</span>
+                        <span className="text-[11px] text-ink/45 tabular-nums">{p.messages.length}</span>
                       </Link>
                     </li>
                   ))}
@@ -69,11 +69,11 @@ export function LibraryPreview() {
         <div className="mt-9 text-center">
           <Link
             href="/messages"
-            className="inline-flex items-center gap-1.5 text-jade font-semibold link-pretty text-[15px]"
+            className="group inline-flex items-center gap-1.5 text-jade font-semibold link-pretty text-[15px]"
           >
-            See every message idea <ArrowRight className="h-4 w-4" />
+            See every message idea <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </Link>
-          <p className="mt-4 text-[12px] text-ink/40 max-w-md mx-auto">
+          <p className="mt-4 text-[12px] text-ink/50 max-w-md mx-auto">
             Looking for a gift? Long distance gifts, digital surprise cards and
             personalized greeting cards, all start with the right words.
           </p>

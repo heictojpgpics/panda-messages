@@ -17,7 +17,7 @@ export function ThemesSection() {
     <section className="relative overflow-hidden bg-mist/60">
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6 py-20 sm:py-24">
         <div className="text-center max-w-2xl mx-auto">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-jade">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-jade">
             Choose the wrapping
           </p>
           <h2 className="mt-3 font-display font-semibold text-ink text-[clamp(1.6rem,3.5vw,2.3rem)]">
@@ -35,14 +35,14 @@ export function ThemesSection() {
                   onClick={() => setSelected(t.id)}
                   aria-pressed={selected === t.id}
                   className={cn(
-                    "group card-lift rounded-2xl border-2 bg-paper p-3 flex flex-col items-center gap-2 transition-all",
+                    "group card-lift tap-feedback rounded-2xl border-2 bg-paper p-3 flex flex-col items-center gap-2 transition-all",
                     selected === t.id
-                      ? "border-jade shadow-[0_10px_28px_-12px_rgba(21,122,85,0.4)]"
+                      ? "border-jade bg-jade-soft/30 shadow-[0_10px_28px_-12px_rgba(21,122,85,0.4)]"
                       : "border-transparent hover:border-ink/10"
                   )}
                 >
                   <EnvelopeChip theme={t} size={62} className="group-hover:scale-105 transition-transform" />
-                  <span className="text-[11.5px] font-medium text-ink/75 leading-tight text-center">
+                  <span className="text-[11.5px] font-medium text-ink/80 leading-tight text-center">
                     {t.name}
                   </span>
                   {selected === t.id && (
@@ -56,10 +56,10 @@ export function ThemesSection() {
                 </button>
               ))}
             </div>
-            <p className="mt-4 text-center text-[12.5px] text-ink/55">
+            <p className="mt-4 text-center text-[12.5px] text-ink/60">
               <strong className="text-ink">{theme.name}.</strong> {theme.blurb}
             </p>
-            <p className="mt-1 text-center text-[11.5px] text-ink/40">
+            <p className="mt-1 text-center text-[11.5px] text-ink/50">
               Every one of the fourteen themes comes with every card. Try them all here.
             </p>
           </div>
